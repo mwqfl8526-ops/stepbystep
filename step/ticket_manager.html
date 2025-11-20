@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة أكواد التذاكر</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="data/data_config.js"></script>
+    <style>
+        .tickets-table td { font-size: 0.9em; }
+        .tickets-table .expired { color: var(--red-emergency); font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="header-controls">
+        <a href="manager_dashboard.html" class="btn-back">🔙 لوحة المدير</a>
+    </div>
+
+    <div class="container">
+        <h1>إدارة أكواد تذاكر السائحين 🎟️</h1>
+
+        <h2>إضافة كود تذكرة جديد</h2>
+        <div id="addTicketForm" style="border: 1px solid var(--gold); padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+            <div class="form-group">
+                <label for="newTicketCode">كود التذكرة:</label>
+                <input type="text" id="newTicketCode" placeholder="أدخل كود فريد" required>
+            </div>
+            <div class="form-group">
+                <label for="expiryDate">تاريخ انتهاء الصلاحية:</label>
+                <input type="date" id="expiryDate" required>
+            </div>
+            <button onclick="addTicket()" class="btn-primary">➕ إضافة الكود</button>
+            <p id="ticketMessage" style="margin-top: 10px; color: var(--green-success); display: none;"></p>
+        </div>
+
+        <h2>قائمة أكواد التذاكر الحالية</h2>
+        <div id="ticketListContainer">
+            <table class="requests-table tickets-table">
+                <thead>
+                    <tr>
+                        <th>الكود</th>
+                        <th>تاريخ الانتهاء</th>
+                        <th>الحالة</th>
+                        <th>الإجراء</th>
+                    </tr>
+                </thead>
+                <tbody id="ticketsTableBody">
+                </tbody>
+            </table>
+        </div>
+        
+        <p id="noTicketsMessage" style="text-align: center; color: var(--gold); margin-top: 50px; display: none;">لا توجد أكواد تذاكر مدخلة.</p>
+    </div>
+
+    <script>
+        const loadData = window.loadData;
+        const saveDataToStorage = window.saveDataToStorage;
+        const KEYS = window.KEYS;
+
+        function displayTickets() {
+            const data = loadData();
+            const tickets = data[KEYS.TICKET_CODES] || [];
+            const tbody = document.getElementById('ticketsTableBody');
+            const noTicketsMessage = document.getElementById('noTicketsMessage');
+            tbody.innerHTML = '';
+            
+            if (tickets.length === 0) {
+                noTicketsMessage.style.display = 'block';
+                return;
+            }
+            noTicketsMessage.style.display = 'none';
+
+            const today = new Date();
+
+            tickets.forEach(ticket => {
+                const tr = document.createElement('tr');
+                const expiry = new Date(ticket.expiryDate);
+                const isExpired = expiry < today;
+                
+                tr.innerHTML = `
+                    <td>${ticket.code}</td>
+                    <td>${ticket.expiryDate}</td>
+                    <td class="${isExpired ? 'expired' : ''}">
+                        ${isExpired ? 'منتهي الصلاحية 🚫' : 'فعال ✅'}
+                    </td>
+                    <td>
+                        <button onclick="removeTicket('${ticket.code}')" class="btn-back" style="background-color: var(--red-emergency);">🗑️ حذف</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
+        function addTicket() {
+            const code = document.getElementById('newTicketCode').value.trim();
+            const expiryDate = document.getElementById('expiryDate').value;
+            const msg = document.getElementById('ticketMessage');
+            msg.style.display = 'none';
+
+            if (!code || !expiryDate) {
+                msg.textContent = "❌ يرجى ملء جميع الحقول.";
+                msg.style.backgroundColor = 'var(--red-emergency)';
+                msg.style.display = 'block';
+                return;
+            }
+
+            const data = loadData();
+            let tickets = data[KEYS.TICKET_CODES] || [];
+            
+            if (tickets.some(t => t.code === code)) {
+                 msg.textContent = "❌ هذا الكود موجود بالفعل.";
+                 msg.style.backgroundColor = 'var(--red-emergency)';
+                 msg.style.display = 'block';
+                 return;
+            }
+
+            tickets.push({ code: code, expiryDate: expiryDate });
+            saveDataToStorage(KEYS.TICKET_CODES, tickets);
+            
+            msg.textContent = `✅ تم إضافة الكود ${code} بنجاح.`;
+            msg.style.backgroundColor = 'var(--green-success)';
+            msg.style.display = 'block';
+            document.getElementById('addTicketForm').reset();
+            displayTickets();
+        }
+        
+        function removeTicket(code) {
+            if (confirm(`هل أنت متأكد من حذف كود التذكرة ${code}؟`)) {
+                const data = loadData();
+                let tickets = data[KEYS.TICKET_CODES] || [];
+                const updatedTickets = tickets.filter(t => t.code !== code);
+                
+                saveDataToStorage(KEYS.TICKET_CODES, updatedTickets);
+                displayTickets();
+                alert(`✅ تم حذف الكود ${code}.`);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', displayTickets);
+    </script>
+</body>
+</html>

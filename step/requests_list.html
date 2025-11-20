@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة مراجعة طلبات التوظيف</title>
+<link rel="stylesheet" href="style.css">
+<script src="data/data_config.js"></script>
+<style>
+    .tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid var(--border-color); }
+    .tab-button { padding: 10px 15px; cursor: pointer; background-color: var(--blue-royal); border: none; color: var(--white); font-weight: bold; border-radius: 8px 8px 0 0; margin-left: 5px; transition: background-color 0.3s, color 0.3s; }
+    .tab-button.active { background-color: var(--gold); color: var(--dark-bg); border-bottom: 2px solid var(--gold); }
+    .tab-content { padding-top: 10px; }
+    .status-pill { padding: 5px 10px; border-radius: 5px; font-weight: bold; display: inline-block; }
+    .status-pill.review { background-color: var(--yellow-warning); color: var(--dark-bg); }
+    .status-pill.approved { background-color: var(--green-success); }
+    .status-pill.rejected { background-color: var(--red-emergency); }
+    .status-pill.completed { background-color: var(--blue-royal); }
+    .btn-sm { padding: 5px 10px; font-size: 0.85em; border-radius: 4px; margin-left: 5px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="header-controls">
+    <a href="manager_dashboard.html" class="btn-back">🏠 الرئيسية</a>
+    <button class="btn-sm" style="background-color:var(--blue-royal); margin-left:10px;" onclick="displayRequests()">🔄 تحديث الطلبات</button>
+</div>
+
+<div class="container">
+    <h1>مراجعة طلبات التوظيف 📝</h1>
+    
+    <div class="tabs">
+        <button class="tab-button active" onclick="changeTab('review')">قيد المراجعة</button>
+        <button class="tab-button" onclick="changeTab('accepted')">مقبولة (في انتظار الإكمال)</button>
+        <button class="tab-button" onclick="changeTab('archive')">الأرشيف (مرفوضة / مكتملة)</button>
+    </div>
+
+    <div id="requestsTableContainer" class="tab-content">
+        <table class="requests-table" border="1" style="width:100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th>رقم الطلب</th>
+                    <th>المتقدم</th>
+                    <th>الوظيفة</th>
+                    <th>الحالة</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody id="requestsTableBody"></tbody>
+        </table>
+        <p id="noRequestsMessage" style="text-align: center; color: var(--gold); margin-top: 50px; display: none;">لا توجد طلبات في هذا التبويب.</p>
+    </div>
+</div>
+
+<!-- مودال عرض الملفات -->
+<div id="filesModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; z-index:9999;">
+    <div style="background-color: var(--dark-bg); padding:20px; border-radius:10px; max-width:90%; max-height:90%; overflow:auto; position:relative;">
+        <button onclick="closeFilesModal()" style="position:absolute; top:10px; right:10px; padding:5px 10px; cursor:pointer;">❌ إغلاق</button>
+        <h2 style="text-align:center; color:var(--gold); margin-bottom:20px;">📑 ملفات الطلب</h2>
+        <div id="filesContainer" style="display:flex; flex-wrap:wrap; gap:15px; justify-content:center;"></div>
+    </div>
+</div>
+
+<script>
+const loadData = window.loadData;
+const updateApplicationStatus = window.updateApplicationStatus;
+const deleteApplication = window.deleteApplication;
+const KEYS = window.KEYS;
+const ROLES = window.ROLES;
+
+let currentTab = 'review';
+let currentApplications = [];
+
+function changeTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`.tab-button[onclick="changeTab('${tab}')"]`).classList.add('active');
+    displayRequests();
+}
+
+function getStatusPill(status) {
+    let className = '';
+    if (status.includes('قيد المراجعة')) className = 'review';
+    else if (status.includes('القبول')) className = 'approved';
+    else if (status.includes('الرفض')) className = 'rejected';
+    else if (status.includes('الاكتمال')) className = 'completed';
+    return `<span class="status-pill ${className}">${status}</span>`;
+}
+
+function filterRequests(applications) {
+    if (currentTab === 'review') return applications.filter(app => app.status === 'قيد المراجعة');
+    else if (currentTab === 'accepted') return applications.filter(app => app.status === 'تم القبول');
+    else if (currentTab === 'archive') return applications.filter(app => app.status === 'تم الرفض' || app.status === 'تم الاكتمال');
+    return [];
+}
+
+function viewFiles(app){
+    const container=document.getElementById('filesContainer');
+    container.innerHTML='';
+    if(!app.files) return;
+    for(const key in app.files){
+        app.files[key].forEach(fileData=>{
+            const div=document.createElement('div');
+            div.style.textAlign='center';
+            div.style.width='200px';
+            const label=document.createElement('p');
+            label.textContent=key;
+            label.style.color='var(--gold)';
+            label.style.fontWeight='bold';
+            label.style.marginBottom='5px';
+            const img=document.createElement('img');
+            img.src=fileData;
+            img.style.width='100%';
+            img.style.border='1px solid #ccc';
+            img.style.borderRadius='6px';
+            img.style.objectFit='cover';
+            div.appendChild(label);
+            div.appendChild(img);
+            container.appendChild(div);
+        });
+    }
+    document.getElementById('filesModal').style.display='flex';
+}
+
+function closeFilesModal(){
+    document.getElementById('filesModal').style.display='none';
+}
+
+function displayRequests() {
+    const data = loadData();
+    currentApplications = data[KEYS.JOB_APPLICATIONS] || [];
+    const filtered = filterRequests(currentApplications);
+    const tbody = document.getElementById('requestsTableBody');
+    const noRequestsMessage = document.getElementById('noRequestsMessage');
+    tbody.innerHTML = '';
+
+    if (filtered.length === 0) {
+        noRequestsMessage.style.display = 'block';
+        return;
+    }
+    noRequestsMessage.style.display = 'none';
+
+    filtered.forEach(app => {
+        const tr = document.createElement('tr');
+        let actions = '';
+
+        if (app.status === 'قيد المراجعة') {
+            actions = `
+                <button class="btn-sm" style="background-color:var(--green-success);" onclick="changeStatus('${app.id}','تم القبول')">✅ قبول</button>
+                <button class="btn-sm" style="background-color:var(--red-emergency);" onclick="changeStatus('${app.id}','تم الرفض')">❌ رفض</button>
+            `;
+        } else if (app.status === 'تم القبول') {
+            actions = `<span style="color: var(--gold); font-weight:bold;">في انتظار الإكمال</span>`;
+        } else {
+            actions = getStatusPill(app.status);
+        }
+
+        actions += `<button class="btn-sm" style="background-color:#555;" onclick="deleteApp('${app.id}')">🗑️ حذف</button>`;
+        actions += `<button class="btn-sm" style="background-color:var(--blue-royal);" onclick='viewFiles(${JSON.stringify(app).replace(/'/g,"\\'")})'>📂 عرض تفاصيل الملف</button>`;
+
+        tr.innerHTML = `
+            <td>${app.id}</td>
+            <td>${app.fullName}</td>
+            <td>${app.role}</td>
+            <td>${getStatusPill(app.status)}</td>
+            <td>${actions}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function changeStatus(id, newStatus) {
+    if (confirm('هل أنت متأكد من تغيير حالة الطلب؟')) {
+        if (updateApplicationStatus(id,newStatus)) {
+            alert('✅ تم تحديث الحالة.');
+            displayRequests();
+        } else {
+            alert('❌ فشل تحديث الحالة.');
+        }
+    }
+}
+
+function deleteApp(id) {
+    if (confirm('هل أنت متأكد من حذف الطلب؟')) {
+        if (deleteApplication(id)) {
+            alert('✅ تم حذف الطلب.');
+            displayRequests();
+        } else {
+            alert('❌ فشل الحذف.');
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    changeTab('review');
+});
+</script>
+</body>
+</html>

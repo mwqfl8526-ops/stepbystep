@@ -1,0 +1,252 @@
+<!DOCTYPE html>                
+<html lang="ar" dir="rtl">                
+<head>                
+<meta charset="UTF-8">                
+<meta name="viewport" content="width=device-width, initial-scale=1.0">                
+<title>مطاعم</title>                
+<link rel="stylesheet" href="style.css">                
+<style>                
+body { font-family: Arial, sans-serif; background-color: #121212; color:#e0e0e0; margin:0; padding:0; }                
+.container { max-width: 1000px; margin: 20px auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }                
+.card { background-color: #1e1e1e; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); overflow: hidden; display: flex; flex-direction: column; }                
+.card img { width: 100%; height: 200px; object-fit: cover; }                
+.card-content { padding: 15px; flex: 1; display: flex; flex-direction: column; }                
+.card-content h3 { margin: 0 0 8px; }                
+.card-content p { margin: 4px 0; font-size: 14px; color: #ccc; }                
+.card-content button { padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; margin-top: auto; }                
+.card-content button.order { background-color: #25d366; color: #fff; margin-bottom:5px; }                
+.card-content button.directions { background-color: #128c7e; color: #fff; margin-bottom:5px; }                
+.card-content button.commentsBtn { background-color:#ff9800; color:#fff; margin-bottom:5px; }                
+.rating { color: #ffd700; font-size: 16px; margin-bottom: 5px; }
+.modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background-color: rgba(0,0,0,0.9); justify-content:center; align-items:center; z-index:1000; }                
+.modal-content { background-color: #1e1e1e; padding: 20px; border-radius: 10px; width: 90%; max-width: 500px; position: relative; color:#e0e0e0; }                
+.modal-content h3 { margin-top:0; }                
+.modal-content label { display:block; margin: 10px 0 5px; }                
+.modal-content input, .modal-content textarea, .modal-content select { width:100%; padding:8px; border-radius:5px; border:1px solid #555; background-color:#2c2c2c; color:#e0e0e0; }
+.modal-content button { margin-top: 10px; padding: 8px 12px; border:none; border-radius:5px; cursor:pointer; color:#fff; font-weight:bold; }                
+.modal-content button.submitOrder { background-color:#25d366; }                
+.modal-content button.addComment { background-color:#ff9800; }                
+.modal-content .close { position:absolute; top:10px; right:10px; cursor:pointer; font-weight:bold; font-size:18px; color:#fff; }                
+.success-message { margin-top: 10px; color: #4caf50; font-weight: bold; text-align: center; }                
+.comment-item { border-bottom:1px solid #555; padding:5px 0; font-size:14px; }                
+.comment-item p { margin:2px 0; }
+.comment-item .stars { color: #ffd700; }
+</style>                
+</head>                
+<body>                
+<div class="container" id="cardsContainer"></div>                <div class="modal" id="orderModal">                
+    <div class="modal-content">                
+        <span class="close" id="modalClose">×</span>                
+        <h3>طلب طعام</h3>                
+        <p id="modalPlaceName" style="font-weight:bold;"></p>                
+        <label>الاسم:</label>                
+        <input type="text" id="userName" placeholder="اكتب اسمك">                
+        <label>رقم الهاتف:</label>                
+        <input type="text" id="userPhone" placeholder="رقم الهاتف">                
+        <label>الطلب:</label>                
+        <textarea id="userRequest" rows="3" placeholder="اطلب وجبتك"></textarea>                
+        <label><input type="checkbox" id="shareLocationOrder"> مشاركة موقعي الحالي</label>                
+        <button class="submitOrder" id="submitOrder">إرسال طلب الطعام</button>                
+        <div class="success-message" id="orderSuccess" style="display:none;">تم إرسال الطلب بنجاح وسيتم التواصل معك في أقرب وقت!</div>                
+    </div>                
+</div>                <div class="modal" id="commentsModal">                
+    <div class="modal-content">                
+        <span class="close" id="commentsClose">×</span>                
+        <h3>التعليقات</h3>                
+        <div id="commentsList"></div>                
+        <label>اسمك:</label>                
+        <input type="text" id="commentName" placeholder="اكتب اسمك">                
+        <label>تقييمك (نجوم):</label>
+        <select id="commentRating">
+            <option value="5">⭐⭐⭐⭐⭐ 5 نجوم</option>
+            <option value="4">⭐⭐⭐⭐ 4 نجوم</option>
+            <option value="3">⭐⭐⭐ 3 نجوم</option>
+            <option value="2">⭐⭐ 2 نجوم</option>
+            <option value="1">⭐ 1 نجمة</option>
+        </select>
+        <label>تعليقك:</label>                
+        <textarea id="commentText" rows="3" placeholder="اكتب تعليقك"></textarea>                
+        <button class="addComment" id="addCommentBtn">إضافة تعليق</button>                
+    </div>                
+</div>                
+<script src="data_config.js"></script>                
+<script>                
+const cardsContainer = document.getElementById('cardsContainer');                
+const orderModal = document.getElementById('orderModal');                
+const commentsModal = document.getElementById('commentsModal');                
+const modalClose = document.getElementById('modalClose');                
+const commentsClose = document.getElementById('commentsClose');                
+const modalPlaceName = document.getElementById('modalPlaceName');                
+const userName = document.getElementById('userName');                
+const userPhone = document.getElementById('userPhone');                
+const userRequest = document.getElementById('userRequest');                
+const submitOrder = document.getElementById('submitOrder');                
+const orderSuccess = document.getElementById('orderSuccess');                
+const shareLocationOrder = document.getElementById('shareLocationOrder');                
+                
+const commentsList = document.getElementById('commentsList');                
+const commentName = document.getElementById('commentName');                
+const commentText = document.getElementById('commentText');
+const commentRating = document.getElementById('commentRating');
+const addCommentBtn = document.getElementById('addCommentBtn'); // تم تعريف الزر هنا
+                
+let currentPlaceCode = null;                
+                
+function loadRestaurants() {                
+    const data = window.loadData();                
+    return data[window.KEYS.RESTAURANTS] || [];                
+}                
+
+function getAverageRating(placeCode) {
+    const comments = window.getComments(placeCode);
+    if (comments.length === 0) return 'غير مُقيّم';
+    const totalRating = comments.reduce((sum, c) => sum + parseInt(c.rating || 0), 0);
+    const avg = (totalRating / comments.length).toFixed(1);
+    const stars = '⭐'.repeat(Math.round(avg));
+    return `${avg} ${stars}`;
+}
+                
+function renderRestaurants() {                
+    cardsContainer.innerHTML='';                
+    const restaurants = loadRestaurants();                
+    restaurants.forEach(place=>{                
+        const avgRating = getAverageRating(place.code);
+        const card=document.createElement('div');                
+        card.className='card';                
+        card.innerHTML=`                
+            <img src="${place.photoBase64}" alt="${place.name}">                
+            <div class="card-content">                
+                <h3>${place.name}</h3>
+                <p class="rating">التقييم: ${avgRating}</p>
+                <p>التصنيف: <strong>${place.category || 'غير محدد'}</strong></p>
+                <p>خدمة التوصيل: ${place.delivery === 'yes' ? 'متوفرة' : 'غير متوفرة'}</p>                
+                <p>معلومات أخرى: ${place.otherInfo || ''}</p>                
+                <button class="order">طلب طعام</button>                
+                <button class="directions">الاتجاهات</button>                
+                <button class="commentsBtn">التعليقات</button>                
+            </div>                
+        `;                
+        const orderBtn=card.querySelector('.order');                
+        const dirBtn=card.querySelector('.directions');                
+        const commentsBtn=card.querySelector('.commentsBtn');                
+                
+        orderBtn.addEventListener('click', ()=>{                
+            currentPlaceCode=place.code;                
+            modalPlaceName.textContent=place.name;                
+            orderModal.style.display='flex';                
+            orderSuccess.style.display='none';                
+            userName.value='';                
+            userPhone.value='';                
+            userRequest.value='';                
+            shareLocationOrder.checked = false;                
+        });                
+                
+        dirBtn.addEventListener('click', ()=>{                
+            if(place.gmapsLink) window.open(place.gmapsLink,'_blank');                
+        });                
+                
+        commentsBtn.addEventListener('click', ()=>{                
+            currentPlaceCode=place.code;                
+            commentsModal.style.display='flex';                
+            commentName.value='';                
+            commentText.value='';
+            commentRating.value='5';
+            renderComments();                
+        });                
+                
+        cardsContainer.appendChild(card);                
+    });                
+}                
+                
+modalClose.addEventListener('click', ()=>{ orderModal.style.display='none'; });                
+commentsClose.addEventListener('click', ()=>{ commentsModal.style.display='none'; });                
+                
+submitOrder.addEventListener('click', ()=>{                
+    if(!userName.value || !userPhone.value || !userRequest.value){                
+        alert('يرجى تعبئة جميع الحقول.');                
+        return;                
+    }                
+    const data=window.loadData();                
+    const ordersKey=currentPlaceCode;                
+    let locData=null;                
+    
+    if(shareLocationOrder.checked && navigator.geolocation){                
+        submitOrder.disabled = true;
+        submitOrder.textContent = 'جاري تحديد الموقع...';
+        navigator.geolocation.getCurrentPosition(pos=>{                
+            locData = { lat: pos.coords.latitude, lng: pos.coords.longitude };                
+            saveOrder(locData);                
+        }, ()=>{ 
+            alert('تعذر تحديد موقعك الحالي. سيتم إرسال الطلب بدون موقع.');
+            saveOrder(null); 
+        });                
+    } else {
+        saveOrder(null);                
+    }
+                
+    function saveOrder(location){                
+        submitOrder.disabled = false;
+        submitOrder.textContent = 'إرسال طلب الطعام';
+
+        const existingOrders=data[window.KEYS.BOOKINGS] || {};                
+        if(!existingOrders[ordersKey]) existingOrders[ordersKey]=[];                
+        existingOrders[ordersKey].push({                
+            name: userName.value.trim(),                
+            phone: userPhone.value.trim(),                
+            request: userRequest.value.trim(),                
+            location: location,                
+            time: new Date().toLocaleString('ar-EG',{timeZone:'Africa/Cairo', dateStyle: 'short', timeStyle: 'short'})
+        });                
+        window.saveDataToStorage(window.KEYS.BOOKINGS, existingOrders);                
+        orderSuccess.style.display='block';                
+        userName.value='';                
+        userPhone.value='';                
+        userRequest.value='';                
+        shareLocationOrder.checked = false;
+    }                
+});
+
+addCommentBtn.addEventListener('click', ()=>{
+    console.log('--- Button Clicked (Restaurants) ---'); // سطر التشخيص
+
+    if(!commentName.value || !commentText.value || !commentRating.value){
+        alert('يرجى تعبئة الاسم والتقييم والتعليق.');
+        return;
+    }
+    
+    const saved = window.saveComment(currentPlaceCode, {
+        name: commentName.value.trim(),
+        comment: commentText.value.trim(),
+        rating: commentRating.value,
+        time: new Date().toLocaleString('ar-EG', {timeZone:'Africa/Cairo', dateStyle: 'short', timeStyle: 'short'})
+    });
+
+    if(saved) {
+        commentName.value='';
+        commentText.value='';
+        commentRating.value='5';
+
+        renderComments();
+        renderRestaurants(); 
+    } else {
+        alert('فشل في حفظ التعليق.');
+    }
+});
+                
+function renderComments(){                
+    commentsList.innerHTML='';                
+    const comments=window.getComments(currentPlaceCode);                
+    if(comments.length===0){ commentsList.innerHTML='<p>لا توجد تعليقات بعد.</p>'; return; }                
+    comments.forEach(c=>{                
+        const stars = '⭐'.repeat(parseInt(c.rating || 0));
+        const div=document.createElement('div');                
+        div.className='comment-item';                
+        div.innerHTML=`<p><strong>${c.name}</strong> <span class="stars">${stars}</span> (${c.time})</p><p>${c.comment}</p>`;                
+        commentsList.appendChild(div);                
+    });                
+}                
+                
+renderRestaurants();                
+</script>                
+</body>                
+</html>

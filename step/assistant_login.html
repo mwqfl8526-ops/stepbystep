@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>دخول المساعد</title>
+
+<style>
+body {
+    background:#121212;
+    color:#fff;
+    font-family: Arial;
+    margin:0;
+    padding:0;
+}
+
+.container {
+    width:90%;
+    max-width:400px;
+    margin:60px auto;
+    background:#1e1e1e;
+    padding:20px;
+    border-radius:12px;
+    box-shadow:0 0 10px #000;
+}
+
+h2 {
+    text-align:center;
+    margin-bottom:20px;
+    color:#4dd0e1;
+}
+
+input {
+    width:100%;
+    padding:12px;
+    margin:10px 0;
+    border:none;
+    border-radius:8px;
+    background:#2c2c2c;
+    color:#fff;
+}
+
+button {
+    width:100%;
+    padding:12px;
+    background:#4dd0e1;
+    border:none;
+    border-radius:8px;
+    margin-top:10px;
+    font-size:16px;
+    cursor:pointer;
+}
+
+button:hover { opacity:0.9; }
+
+.error {
+    background:#b71c1c;
+    padding:10px;
+    border-radius:8px;
+    margin:10px 0;
+    display:none;
+    text-align:center;
+}
+
+.success {
+    background:#1b5e20;
+    padding:10px;
+    border-radius:8px;
+    margin:10px 0;
+    display:none;
+    text-align:center;
+}
+</style>
+
+<script src="data/data_config.js"></script>
+</head>
+
+<body>
+
+<div class="container">
+    <h2>دخول المساعد</h2>
+
+    <div id="error" class="error"></div>
+    <div id="success" class="success"></div>
+
+    <label>ادخل كود الشات:</label>
+    <input type="text" id="chatCode" placeholder="مثال: CHAT-12345">
+
+    <button onclick="loginAssistant()">تسجيل الدخول</button>
+</div>
+
+<script>
+function loginAssistant(){
+
+    const chatCode = document.getElementById("chatCode").value.trim();
+    const errorBox = document.getElementById("error");
+    const successBox = document.getElementById("success");
+
+    errorBox.style.display = "none";
+    successBox.style.display = "none";
+
+    if(chatCode === ""){
+        errorBox.innerText = "من فضلك اكتب كود الشات.";
+        errorBox.style.display = "block";
+        return;
+    }
+
+    // تحميل الداتا
+    const data = window.loadData();
+
+    // دمج كل المساعدين
+    const allAssistants = [
+        ...(data[window.KEYS.ASSISTANTS_GUIDES] || []),
+        ...(data[window.KEYS.ASSISTANTS_COMPANIONS] || []),
+        ...(data[window.KEYS.ASSISTANTS_DRIVERS] || [])
+    ];
+
+    // البحث عن المساعد بالكود
+    const found = allAssistants.find(a => a.chatCode === chatCode);
+
+    if(!found){
+        errorBox.innerText = "كود الشات غير صحيح.";
+        errorBox.style.display = "block";
+        return;
+    }
+
+    // نجاح
+    successBox.innerText = "تم تسجيل الدخول بنجاح!";
+    successBox.style.display = "block";
+
+    // استخراج الاسم
+    const name = encodeURIComponent(found.name || "مساعد");
+
+    // التحويل للصفحة المطلوبة
+    setTimeout(() => {
+        window.location.href = `chat_page.html?code=${chatCode}&name=${name}&showClear=1`;
+    }, 600);
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>البحث عن مساعد سياحي</title>
+<link rel="stylesheet" href="style.css">
+<script src="data/data_config.js"></script>
+<style>
+.cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; margin-top: 30px; }
+.assistant-card { background-color: #2a2a2a; border-radius: 10px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); border:1px solid var(--blue-royal); position: relative; transition: transform 0.3s,border-color 0.3s; }
+.assistant-card:hover { transform: translateY(-5px); border-color: var(--gold); }
+.card-header { display:flex; align-items:center; margin-bottom:15px; border-bottom:1px dashed #444; padding-bottom:10px; }
+.profile-img { width:70px; height:70px; border-radius:50%; object-fit:cover; border:2px solid var(--gold); margin-left:15px; }
+.card-header h3 { color:var(--gold); margin:0; font-size:1.4em; }
+.card-details p { margin:8px 0; text-align:right; font-size:0.95em; color:#ccc; }
+.card-details strong { color:var(--white); }
+.rating { color: var(--yellow-warning); font-size:1.1em; margin-top:5px; line-height:1.2em; }
+.contact-btn, .comments-btn { background-color:var(--green-success); color:var(--dark-bg); padding:10px; width:100%; border:none; border-radius:6px; font-weight:bold; margin-top:10px; cursor:pointer; transition: background-color 0.3s; }
+.contact-btn:hover, .comments-btn:hover { background-color:#388e3c; }
+.role-title { text-align:center; color:var(--white); background-color:var(--blue-royal); padding:10px; border-radius:8px; margin-bottom:20px; }
+.comment-section { display:none; background-color:#1f1f1f; padding:10px; border-radius:6px; margin-top:10px; max-height:300px; overflow-y:auto; }
+.comment-item { margin-bottom:8px; line-height:1.3em; padding-bottom:5px; border-bottom:1px dashed #444; }
+.comment-name { font-weight:bold; color:var(--gold); display:block; margin-bottom:2px; }
+.comment-stars { display:block; color:var(--yellow-warning); margin-bottom:2px; }
+.comment-text { display:block; color:#ccc; text-align:right; }
+.comment-input, .rating-select { width:100%; padding:6px; margin-top:5px; border-radius:4px; border:1px solid var(--blue-royal); background-color:#2a2a2a; color:#fff; }
+.comment-submit { margin-top:5px; padding:6px 12px; border:none; border-radius:6px; background-color:var(--blue-royal); color:#fff; cursor:pointer; }
+</style>
+</head>
+<body>
+<div class="header-controls">
+    <a href="main_services.html" class="btn-back">🔙 الصفحة الرئيسية</a>
+</div>
+<div class="container" style="max-width:1000px;">
+    <h1 id="pageHeading">اهلا بك يا زائرنا العزيز</h1>
+    <div class="role-title" id="roleTitleDisplay">جميع المساعدين المتاحين</div>
+    <div id="assistantCardsGrid" class="cards-grid"></div>
+</div>
+<script>
+const loadData = window.loadData;
+const KEYS = window.KEYS;
+const ROLES = window.ROLES;
+
+function getMajorityRating(comments){
+    if(!comments || comments.length===0) return 5;
+    const counts={};
+    comments.forEach(c=>counts[c.rating]=(counts[c.rating]||0)+1);
+    let max=0, majority=5;
+    for(const r in counts){ if(counts[r]>max){ max=counts[r]; majority=parseInt(r); } }
+    return majority;
+}
+
+function renderStars(rating){
+    let stars='';
+    for(let i=1;i<=5;i++) stars+=i<=rating?'⭐':'☆';
+    return stars;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const roleKey = urlParams.get('role');
+    const data = loadData();
+    let assistantsList = [];
+    let title = "جميع المساعدين المتاحين";
+    const keyMap = { [ROLES.GUIDE.key]: KEYS.ASSISTANTS_GUIDES, [ROLES.COMPANION.key]: KEYS.ASSISTANTS_COMPANIONS, [ROLES.DRIVER.key]: KEYS.ASSISTANTS_DRIVERS };
+    if(roleKey){ assistantsList = data[keyMap[roleKey]]||[]; title=ROLES[roleKey].name+""; }
+    else assistantsList=[...(data[KEYS.ASSISTANTS_GUIDES]||[]), ...(data[KEYS.ASSISTANTS_COMPANIONS]||[]), ...(data[KEYS.ASSISTANTS_DRIVERS]||[])];
+    document.getElementById('roleTitleDisplay').textContent = title;
+    renderCards(assistantsList);
+});
+
+function renderCards(assistants){
+    const grid = document.getElementById('assistantCardsGrid');
+    grid.innerHTML='';
+    if(assistants.length===0){ grid.innerHTML='<p style="text-align:center;color:#aaa;">لا يوجد مساعدون متاحون حالياً لهذا الدور.</p>'; return; }
+    assistants.forEach(a=>{
+        const card = document.createElement('div');
+        card.className='assistant-card';
+        card.setAttribute('data-id', a.chatCode);
+        let details='';
+        if(a.groupLimit){ details+=`<p><strong>التخصص:</strong> ${a.guideType||'عام'}</p>`; details+=`<p><strong>حد المجموعة:</strong> ${a.groupLimit} شخص</p>`; details+=`<p><strong>سعر اليوم:</strong> ${a.price} درهم</p>`; }
+        else if(a.specialization){ details+=`<p><strong>التخصص:</strong> ${a.specialization}</p>`; details+=`<p><strong>سعر اليوم:</strong> ${a.priceDay} درهم</p>`; details+=`<p><strong>سعر الساعة:</strong> ${a.priceHour} درهم</p>`; }
+        else if(a.cityPrice){ details+=`<p><strong>أجرة المدينة:</strong> ${a.cityPrice} درهم</p>`; details+=`<p><strong>أجرة خارج المدينة:</strong> ${a.outCityPrice} درهم</p>`; }
+
+        const comments = window.getComments('assistants', a.chatCode) || [];
+        const majorityRating = getMajorityRating(comments);
+        const ratingHTML=`<div class="rating">${renderStars(majorityRating)}</div><div>(${a.experience} سنوات خبرة)</div>`;
+
+        card.innerHTML=`
+            <div class="card-header">
+                <img src="${a.img||'images/placeholder_profile.png'}" class="profile-img" alt="${a.name}">
+                <div>
+                    <h3>${a.name}</h3>
+                    ${ratingHTML}
+                </div>
+            </div>
+            <div class="card-details">${details}<p><strong>نبذة:</strong> ${a.about}</p></div>
+            <button class="contact-btn" onclick="startChat('${a.chatCode}','')">💬 تواصل الآن</button>
+            <button class="comments-btn" onclick="toggleComments('${a.chatCode}')">💬 التعليقات</button>
+            <div class="comment-section" id="comments-${a.chatCode}">
+                <div class="comments-list"></div>
+                <input type="text" placeholder="أدخل اسمك..." class="comment-input" id="comment-name-${a.chatCode}">
+                <input type="text" placeholder="أضف تعليقاً..." class="comment-input" id="comment-input-${a.chatCode}">
+                <select class="rating-select" id="comment-rating-${a.chatCode}">
+                    <option value="1">⭐ 1</option>
+                    <option value="2">⭐ 2</option>
+                    <option value="3">⭐ 3</option>
+                    <option value="4">⭐ 4</option>
+                    <option value="5" selected>⭐ 5</option>
+                </select>
+                <button class="comment-submit" onclick="submitComment('${a.chatCode}')">إرسال التعليق</button>
+            </div>
+        `;
+        grid.appendChild(card);
+        loadComments(a.chatCode);
+    });
+}
+
+function startChat(code,name){ window.location.href=`chat_page.html?code=${code}&name=${encodeURIComponent(name)}`; }
+function toggleComments(code){ const sec=document.getElementById(`comments-${code}`); sec.style.display=sec.style.display==='block'?'none':'block'; }
+function loadComments(code){
+    const div=document.querySelector(`#comments-${code} .comments-list`);
+    div.innerHTML='';
+    const comments = window.getComments('assistants', code) || [];
+    comments.slice(-20).forEach(c=>{
+        const el=document.createElement('div');
+        el.className='comment-item';
+        el.innerHTML=`<span class="comment-name">${c.name||'زائر'}</span><span class="comment-stars">${'⭐'.repeat(c.rating)}</span><span class="comment-text">${c.text}</span>`;
+        div.appendChild(el);
+    });
+}
+
+function submitComment(code){
+    const nameInput=document.getElementById(`comment-name-${code}`);
+    const textInput=document.getElementById(`comment-input-${code}`);
+    const ratingSelect=document.getElementById(`comment-rating-${code}`);
+    const name=nameInput.value.trim()||"زائر";
+    const text=textInput.value.trim();
+    const rating=parseInt(ratingSelect.value);
+    if(!text) return;
+    const commentData={name,text,rating};
+    window.saveComment('assistants',code,commentData);
+    nameInput.value=''; textInput.value=''; ratingSelect.value='5';
+    loadComments(code);
+}
+</script>
+</body>
+</html>

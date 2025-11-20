@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>استعلام عن طلب توظيف</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="data/data_config.js"></script>
+    <style>
+        .inquiry-container {
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 30px;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .result-box {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: #2a2a2a;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .status-pending { background-color: var(--blue-royal); color: var(--white); }
+        .status-accepted { background-color: var(--green-success); color: var(--dark-bg); }
+        .status-rejected { background-color: var(--red-emergency); color: var(--white); }
+        .completion-link {
+            display: block;
+            margin-top: 15px;
+            text-align: center;
+        }
+        .error-message {
+            color: var(--red-emergency) !important;
+            font-weight: bold;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-controls">
+        <a href="job_application.html" class="btn-back">🔙 تقديم طلب جديد</a>
+        <a href="index.html" class="btn-back" style="margin-right:10px;">🏠 الرئيسية</a>
+    </div>
+
+    <div class="inquiry-container">
+        <h1>🔍 استعلام عن طلب توظيف</h1>
+        <p>أدخل رقم الطلب الذي حصلت عليه بعد التقديم.</p>
+
+        <form id="inquiryForm">
+            <div class="form-group">
+                <label for="applicationId">رقم الطلب:</label>
+                <input type="text" id="applicationId" required placeholder="مثال: 34562">
+            </div>
+            <button type="submit" class="btn-submit" style="width:100%;">ابحث عن الطلب</button>
+        </form>
+
+        <div id="resultBox" class="result-box" style="display:none;"></div>
+
+        <div id="test-info" style="margin-top:20px;font-size:0.85em;color:#aaa;">
+            <p>للاختبار: <span style="color:var(--gold);">جرب البحث عن الطلب رقم <strong id="testAppId"></strong></span></p>
+        </div>
+    </div>
+
+    <script>
+        const loadData = window.loadData;
+        const saveDataToStorage = window.saveDataToStorage;
+        const KEYS = window.KEYS;
+        const ROLES = window.ROLES;
+
+        function initializeTestApplication() {
+            const data = loadData();
+            let apps = data[KEYS.JOB_APPLICATIONS] || [];
+
+            let exists = apps.find(app => app.id === "54321");
+
+            if (!exists) {
+                exists = {
+                    id: "54321",
+                    fullName: "ماجد الشامسي (اختبار)",
+                    phoneNumber: "971501234567",
+                    address: "دبي، الإمارات",
+                    roleKey: ROLES.GUIDE.key,
+                    role: ROLES.GUIDE.name,
+                    status: "تم القبول",
+                    submissionTime: new Date().toLocaleString('ar-EG', { timeZone:'Africa/Cairo' })
+                };
+                apps.push(exists);
+                saveDataToStorage(KEYS.JOB_APPLICATIONS, apps);
+            }
+
+            document.getElementById("testAppId").textContent = "54321";
+        }
+
+        document.getElementById("inquiryForm").addEventListener("submit", function(e){
+            e.preventDefault();
+
+            const id = document.getElementById("applicationId").value.trim();
+            const result = document.getElementById("resultBox");
+
+            result.style.display = "none";
+            result.innerHTML = "";
+
+            if (!id){
+                result.innerHTML = "<p class='error-message'>الرجاء إدخال رقم الطلب.</p>";
+                result.style.display = "block";
+                return;
+            }
+
+            const data = loadData();
+            const apps = data[KEYS.JOB_APPLICATIONS] || [];
+            const app = apps.find(a => a.id === id);
+
+            if (!app){
+                result.innerHTML = "<p class='error-message'>❌ لم يتم العثور على طلب بهذا الرقم.</p>";
+                result.style.display = "block";
+                return;
+            }
+
+            let statusClass = "status-pending";
+            let action = "";
+
+            if (app.status === "تم القبول"){
+                statusClass = "status-accepted";
+
+                action = `
+                <div class="completion-link">
+                    <p style="color:var(--green-success);margin-bottom:10px;">
+                        تهانينا! تم قبول طلبك. الرجاء استكمال بياناتك.
+                    </p>
+                    <a href="profile_completion.html?role=${app.roleKey}&appId=${app.id}" class="btn-primary">👤 استكمال البيانات</a>
+                </div>
+                `;
+            }
+            else if (app.status === "قيد المراجعة"){
+                statusClass = "status-pending";
+            }
+            else if (app.status === "مرفوض"){
+                statusClass = "status-rejected";
+            }
+
+            const roleName = ROLES[app.roleKey] ? ROLES[app.roleKey].name : app.role;
+
+            result.innerHTML = `
+                <h2>ملخص الطلب ${app.id}</h2>
+                <p><strong>الاسم:</strong> ${app.fullName}</p>
+                <p><strong>الوظيفة:</strong> ${roleName}</p>
+                <p><strong>تاريخ التقديم:</strong> ${app.submissionTime}</p>
+                <p><strong>الحالة:</strong> 
+                    <span class="status-badge ${statusClass}">${app.status}</span>
+                </p>
+                ${action}
+            `;
+            result.style.display = "block";
+        });
+
+        document.addEventListener("DOMContentLoaded", initializeTestApplication);
+    </script>
+
+</body>
+</html>

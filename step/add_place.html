@@ -1,0 +1,153 @@
+<!DOCTYPE html>                
+<html lang="ar" dir="rtl">                
+<head>                
+<meta charset="UTF-8">                
+<meta name="viewport" content="width=device-width, initial-scale=1.0">                
+<title>إضافة مكان</title>                
+<link rel="stylesheet" href="style.css">                
+<style>                
+body { font-family: Arial, sans-serif; background-color: #121212; color:#e0e0e0; margin:0; padding:0; }                
+.container { max-width: 600px; margin: 30px auto; background-color: #1e1e1e; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #000; }                
+h2 { text-align:center; margin-bottom:20px; }                
+label { display:block; margin:10px 0 5px; }                
+input, textarea, select, button { width:100%; padding:8px; border-radius:5px; border:1px solid #555; background-color:#2c2c2c; color:#e0e0e0; }                
+button { margin-top:15px; cursor:pointer; background-color:#25d366; color:#fff; font-weight:bold; border:none; }                
+button#goToManage { background-color:#128c7e; }                
+#previewImg { max-width:100%; margin-top:10px; display:none; border-radius:5px; }                
+.success { color: #00ff7f; margin-top:10px; font-weight:bold; }                
+</style>                
+</head>                
+<body>                
+<div class="container">                
+<h2>إضافة مكان جديد</h2>                
+<label>نوع المكان:</label>                
+<select id="placeType">                
+    <option value="hotel">فندق</option>                
+    <option value="restaurant">مطعم</option>                
+    <option value="store">محل تجاري</option>                
+</select>                
+<label>اسم المكان:</label>                
+<input type="text" id="placeName" placeholder="اكتب اسم المكان">                
+<label>اختر صورة:</label>                
+<input type="file" id="placeFile">                
+<img id="previewImg" />                
+<label>أو رابط الصورة (اختياري):</label>                
+<input type="text" id="placeImage" placeholder="ضع رابط الصورة">                
+<label>رابط Google Maps:</label>                
+<input type="text" id="placeMap">                
+<div id="hotelFields">                
+    <label>سعر الليلة:</label><input type="text" id="priceNight">                
+    <label>سعر الأسبوع:</label><input type="text" id="priceWeek">                
+    <label>سعر الشهر:</label><input type="text" id="priceMonth">                
+    <label>الإقامة تشمل:</label><textarea id="hotelExtras" rows="3"></textarea>                
+</div>                
+<div id="otherFields">
+    <label>تصنيف المكان (مثال: مطعم سمك، متجر ملابس):</label>
+    <input type="text" id="placeCategory" placeholder="اكتب تصنيف المكان">
+    <label>خدمة التوصيل:</label>                
+    <select id="deliveryService">                
+        <option value="yes">نعم</option>                
+        <option value="no">لا</option>                
+    </select>                
+    <label>معلومات أخرى:</label>                
+    <textarea id="otherInfo" rows="3" placeholder="ضع معلومات أخرى هنا"></textarea>                
+</div>                
+<button id="addPlaceBtn">إضافة المكان</button>                
+<div class="success" id="successMsg" style="display:none;"></div>                
+<button id="goToManage">الذهاب لصفحة الطلبات</button>                
+</div>                
+<script src="data_config.js"></script>                
+<script>                
+const placeType = document.getElementById('placeType');                
+const hotelFields = document.getElementById('hotelFields');                
+const otherFields = document.getElementById('otherFields');                
+const addPlaceBtn = document.getElementById('addPlaceBtn');                
+const successMsg = document.getElementById('successMsg');                
+const goToManage = document.getElementById('goToManage');                
+const placeFile = document.getElementById('placeFile');                
+const previewImg = document.getElementById('previewImg');                
+let placeBase64 = '';                
+function toggleFields(){
+    hotelFields.style.display = placeType.value==='hotel'?'block':'none';
+    otherFields.style.display = (placeType.value==='restaurant'||placeType.value==='store')?'block':'none';
+}
+placeType.addEventListener('change', toggleFields);
+toggleFields();
+
+placeFile.addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(file){
+        const reader = new FileReader();
+        reader.onload = function(ev){
+            placeBase64 = ev.target.result;
+            previewImg.src = placeBase64;
+            previewImg.style.display='block';
+        }
+        reader.readAsDataURL(file);
+    }
+});
+
+addPlaceBtn.addEventListener('click', ()=>{
+    const type = placeType.value;
+    const name = document.getElementById('placeName').value.trim();
+    const img = placeBase64 || document.getElementById('placeImage').value.trim();
+    const map = document.getElementById('placeMap').value.trim();
+    
+    let priceNight='', priceWeek='', priceMonth='', extras='', delivery='no', otherInfo='', category='';                
+    if(type==='hotel'){                
+        priceNight = document.getElementById('priceNight').value.trim();                
+        priceWeek = document.getElementById('priceWeek').value.trim();                
+        priceMonth = document.getElementById('priceMonth').value.trim();                
+        extras = document.getElementById('hotelExtras').value.trim();                
+    } else {                
+        category = document.getElementById('placeCategory').value.trim();
+        delivery = document.getElementById('deliveryService').value;                
+        otherInfo = document.getElementById('otherInfo').value.trim();                
+    }                
+                
+    if(!name || !img){ alert('يرجى تعبئة الاسم والصورة'); return; }                
+                
+    const itemData = { name, photoBase64: img, gmapsLink: map };                
+    if(type==='hotel'){ 
+        itemData.priceNight=priceNight; 
+        itemData.priceWeek=priceWeek; 
+        itemData.priceMonth=priceMonth; 
+        itemData.extras=extras; 
+    } else { 
+        itemData.category = category;
+        itemData.delivery = delivery; 
+        itemData.otherInfo = otherInfo; 
+    }                
+                
+    let saveKey = window.KEYS.HOTELS;                
+    if(type==='restaurant') saveKey = window.KEYS.RESTAURANTS;                
+    if(type==='store') saveKey = window.KEYS.STORES;                
+                
+    const result = window.saveContentItem(saveKey, itemData);                
+    if(result){                
+        successMsg.style.display='block';                
+        successMsg.textContent=`تم حفظ المكان بنجاح! كود المكان: ${result.code} | كلمة السر: ${result.password} يرجى حفظهم لتتلقي الطلبات من خلالهم لتحويلك اللي صفحه الطلبات اضغط هنا 👇👇`;                
+        document.getElementById('placeName').value='';                
+        document.getElementById('placeImage').value='';                
+        document.getElementById('placeMap').value='';                
+        document.getElementById('priceNight').value='';                
+        document.getElementById('priceWeek').value='';                
+        document.getElementById('priceMonth').value='';                
+        document.getElementById('hotelExtras').value='';                
+        if(type !== 'hotel') {
+            document.getElementById('placeCategory').value = '';
+            document.getElementById('otherInfo').value='';
+        }
+        placeBase64='';                
+        previewImg.style.display='none';                
+    } else alert('حدث خطأ أثناء الحفظ.');
+
+});
+
+goToManage.addEventListener('click', ()=>{
+    window.location.href='orders_page.html';
+});
+</script>
+
+</body>                
+</html>

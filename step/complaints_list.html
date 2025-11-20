@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الشكاوى والاقتراحات</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="data/data_config.js"></script>
+</head>
+<body>
+    <div class="header-controls">
+        <a href="manager_dashboard.html" class="btn-back">🔙 لوحة المدير</a>
+    </div>
+
+    <div class="container">
+        <h1>الشكاوى والاقتراحات الواردة 📧</h1>
+        <p>هنا يتم عرض جميع الرسائل الواردة من نموذج الشكاوى والاقتراحات.</p>
+        
+        <button onclick="displayComplaints()" class="btn-primary" style="margin-top: 15px;">🔄 تحديث القائمة</button>
+
+        <div id="complaintsList" class="requests-table-container">
+            <table class="requests-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>وقت الإرسال</th>
+                        <th>النوع</th>
+                        <th>تفاصيل الرسالة</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="complaintsTableBody">
+                    </tbody>
+            </table>
+        </div>
+        
+        <p id="noComplaintsMessage" style="text-align: center; color: var(--gold); margin-top: 50px; display: none;">لا توجد شكاوى أو اقتراحات جديدة.</p>
+    </div>
+
+    <script>
+        const loadData = window.loadData;
+        const deleteComplaint = window.deleteComplaint;
+        const KEYS = window.KEYS;
+
+        function displayComplaints() {
+            const data = loadData();
+            const complaints = data[KEYS.COMPLAINTS] || [];
+            const tbody = document.getElementById('complaintsTableBody');
+            const noComplaintsMessage = document.getElementById('noComplaintsMessage');
+            tbody.innerHTML = '';
+
+            if (complaints.length === 0) {
+                noComplaintsMessage.style.display = 'block';
+                return;
+            }
+            noComplaintsMessage.style.display = 'none';
+
+            complaints.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${c.id}</td>
+                    <td>${c.time}</td>
+                    <td><span class="status-badge" style="background-color: ${c.type === 'شكوى' ? 'var(--red-emergency)' : 'var(--blue-royal)'}">${c.type}</span></td>
+                    <td>${c.message.length > 50 ? c.message.substring(0, 50) + '...' : c.message}</td>
+                    <td><button onclick="viewAndRemove('${c.id}', '${c.message.replace(/'/g, "\\'")}')" class="btn-back">عرض/حذف</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
+        function viewAndRemove(id, message) {
+            const fullMessage = message.replace(/\\'/g, "'");
+            if (confirm(`رسالة (${id}):\n\n${fullMessage}\n\nهل تريد حذف هذه الرسالة بعد قراءتها؟`)) {
+                if (deleteComplaint(id)) {
+                    alert('✅ تم حذف الرسالة بنجاح.');
+                    displayComplaints();
+                } else {
+                    alert('❌ فشل حذف الرسالة.');
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', displayComplaints);
+    </script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>                
+<html lang="ar" dir="rtl">        
+<head>                
+<meta charset="UTF-8">                
+<meta name="viewport" content="width=device-width, initial-scale=1.0">                
+<title>استقبال الطلبات</title>                
+<link rel="stylesheet" href="style2.css">                
+<style>                
+body { font-family: Arial, sans-serif; background-color: #121212; color: #e0e0e0; margin:0; padding:0; }                
+.container { max-width: 900px; margin: 30px auto; background-color: #1e1e1e; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #000; }                
+h2 { text-align:center; margin-bottom:20px; }                
+button { padding:10px 15px; border:none; border-radius:5px; cursor:pointer; background-color:#25d366; color:#fff; font-weight:bold; margin-top:5px; }                
+.order-card { background-color:#2c2c2c; margin-bottom:10px; padding:10px; border-radius:5px; display:flex; justify-content:space-between; align-items:center; }                
+.order-info { flex:1; }                
+.hidden { display:none; }                
+.error { color:#ff4d4d; font-weight:bold; }                
+
+/* تعديلات الأزرار الصغيرة */
+.small-btn { padding:5px 8px; font-size:12px; margin-left:5px; border-radius:5px; }                
+.delete-btn { background-color:#ff4d4d; color:#fff; }
+.location-btn { background-color:#128c7e; color:#fff; }
+/* النهاية */
+
+.top-buttons { display:flex; justify-content:space-between; margin-bottom:10px; }                
+</style>                
+</head>                
+<body>                
+<div class="container">                
+<h2>استقبال الطلبات</h2>                
+                
+<div id="ordersDiv">                
+    <div class="top-buttons">                
+        <button id="backToLoginBtn" style="background-color:#128c7e;">رجوع لتسجيل الدخول</button>                
+        <button id="refreshBtn" style="background-color:#ffa500;">تحديث الطلبات</button>                
+        <button id="deleteAllBtn" style="background-color:#ff4d4d;">حذف كل الطلبات</button>                
+    </div>                
+    <h3>الطلبات الخاصة بالمكان (<span id="placeTitle">تحميل...</span>)</h3>                
+    <div id="ordersContainer"><p>جاري تحميل الطلبات...</p></div>                
+</div>                
+<div class="error" id="accessError" style="display:none; text-align: center;"></div>
+
+<script src="data_config.js"></script>                
+<script>                
+const ordersDiv = document.getElementById('ordersDiv');                
+const deleteAllBtn = document.getElementById('deleteAllBtn');                
+const refreshBtn = document.getElementById('refreshBtn');                
+const ordersContainer = document.getElementById('ordersContainer');                
+const placeTitle = document.getElementById('placeTitle');
+const accessError = document.getElementById('accessError');
+
+let currentPlaceCode = null;                
+
+function getPlaceData(code, password) {
+    const data = loadData();
+    const keys = [KEYS.HOTELS, KEYS.RESTAURANTS, KEYS.STORES];
+
+    for(const key of keys){
+        const places = data[key] || [];
+        const place = places.find(p => p.code===code && p.password===password);
+        if(place){ return place; }
+    }
+    return null;
+}
+
+function displayOrders(){                
+    ordersContainer.innerHTML='';                
+    const data = loadData();                
+    const orders = (data[KEYS.BOOKINGS] && data[KEYS.BOOKINGS][currentPlaceCode]) || [];                
+    
+    if(orders.length===0){ 
+        ordersContainer.innerHTML='<p style="text-align: center; color: #ffa500;">لا توجد طلبات جديدة بعد.</p>'; 
+        return; 
+    }                
+                
+    orders.forEach((order,i)=>{                
+        const div = document.createElement('div');                
+        div.className='order-card';                
+                
+        let info = `<div class="order-info"><strong>الطلب رقم ${i+1}</strong><br>                
+                    الاسم: ${order.name}<br>                
+                    رقم الهاتف: ${order.phone}<br>                
+                    الطلب: ${order.request || ''}<br>                
+                    الوقت: ${order.time || ''}</div>`;                
+        
+        let actions = `<div>                
+                        ${order.location? `<button onclick="openLocation(${order.location.lat},${order.location.lng})" class="small-btn location-btn">فتح موقعي</button>`:''}                
+                        <button onclick="deleteOrder(${i})" class="small-btn delete-btn">حذف الطلب</button>                
+                       </div>`;                
+                
+        div.innerHTML = info + actions;                
+        ordersContainer.appendChild(div);                
+    });                
+}                
+                
+refreshBtn.addEventListener('click', ()=>{                
+    displayOrders();                
+});                
+                
+deleteAllBtn.addEventListener('click', ()=>{                
+    if(!currentPlaceCode) return;                
+    if(confirm('هل تريد حذف جميع الطلبات؟')){                
+        const data=loadData();                
+        const orders = data[KEYS.BOOKINGS] || {};                
+        if(orders[currentPlaceCode]) orders[currentPlaceCode]=[];                
+        saveDataToStorage(KEYS.BOOKINGS, orders);                
+        displayOrders();                
+    }                
+});                
+
+// الرجوع لصفحة تسجيل الدخول
+document.getElementById('backToLoginBtn').addEventListener('click', () => {
+    window.location.href = 'login_page.html';
+});
+
+// الدوال العامة (الحذف والموقع)
+window.deleteOrder = function(index){                
+    if(!currentPlaceCode) return;                
+    if(confirm('هل تريد حذف هذا الطلب؟')){                
+        const data=loadData();                
+        const orders = data[KEYS.BOOKINGS] || {};                
+        if(orders[currentPlaceCode]) orders[currentPlaceCode].splice(index,1);                
+        saveDataToStorage(KEYS.BOOKINGS, orders);                
+        displayOrders();                
+    }                
+}                
+                
+window.openLocation = function(lat,lng){                
+    window.open(`http://maps.google.com/?q=${lat},${lng}`,'_blank');                
+}                
+
+// ----------------------------------------------
+// ** وظيفة التحميل الأولي عند فتح الصفحة **
+// ----------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const codeFromURL = urlParams.get('code');
+    const passFromURL = urlParams.get('pass');
+
+    if (!codeFromURL || !passFromURL) {
+        // إذا لم يتم إرسال الكود وكلمة المرور عبر URL، نمنع الوصول
+        ordersDiv.classList.add('hidden');
+        accessError.style.display = 'block';
+        accessError.innerHTML = '<h1>❌ خطأ في الوصول</h1><p>لم يتم تسجيل الدخول. يرجى العودة إلى <a href="login_page.html" style="color:#25d366;">صفحة تسجيل الدخول</a>.</p>';
+        return;
+    }
+
+    const placeData = getPlaceData(codeFromURL, passFromURL);
+
+    if (placeData) {
+        // تم التحقق بنجاح من البيانات المرسلة عبر URL
+        currentPlaceCode = codeFromURL;
+        placeTitle.textContent = placeData.name;
+        displayOrders();
+    } else {
+        // البيانات المرسلة عبر URL غير صالحة
+        ordersDiv.classList.add('hidden');
+        accessError.style.display = 'block';
+        accessError.innerHTML = '<h1>❌ بيانات تسجيل الدخول غير صحيحة</h1><p>يرجى العودة والمحاولة مرة أخرى. <a href="login_page.html" style="color:#25d366;">العودة لصفحة الدخول</a>.</p>';
+    }
+});
+</script>                
+</div>                
+</body>                
+</html>

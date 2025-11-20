@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>إدارة المساعدين السياحيين</title>
+
+<link rel="stylesheet" href="style.css">
+<script src="data/data_config.js"></script>
+
+<style>
+.container{ max-width:1000px; margin:20px auto; }
+.role-select{ margin-bottom:20px; padding:10px; border-radius:6px; border:1px solid var(--blue-royal); background-color:#2a2a2a; color:#fff; }
+.cards-grid{ display:grid; grid-template-columns: repeat(auto-fill,minmax(300px,1fr)); gap:25px; }
+.assistant-card{ background-color:#2a2a2a; border-radius:10px; padding:20px; box-shadow:0 4px 15px rgba(0,0,0,0.4); border:1px solid var(--blue-royal); position:relative; transition:transform 0.3s,border-color 0.3s; }
+.assistant-card:hover{ transform:translateY(-5px); border-color:var(--gold); }
+.card-header{ display:flex; align-items:center; margin-bottom:15px; border-bottom:1px dashed #444; padding-bottom:10px; }
+.profile-img{ width:70px; height:70px; border-radius:50%; object-fit:cover; border:2px solid var(--gold); margin-left:15px; }
+.card-header h3{ color:var(--gold); margin:0; font-size:1.4em; }
+.card-details p{ margin:8px 0; text-align:right; font-size:0.95em; color:#ccc; }
+.card-details strong{ color:var(--white); }
+.rating{ color:var(--yellow-warning); font-size:1.1em; margin-top:5px; }
+.btn-delete{ margin-top:10px; padding:10px 16px; border:none; border-radius:6px; background-color:var(--red-emergency); color:#fff; cursor:pointer; font-size:1.1em; }
+#commentsModal{ display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; background-color:rgba(0,0,0,0.6); justify-content:center; align-items:center; }
+#commentsModal .modal-content{ background-color:#2a2a2a; padding:20px; border-radius:10px; max-width:500px; width:90%; max-height:70%; overflow-y:auto; }
+.comment-item{ margin-bottom:10px; border-bottom:1px dashed #555; padding-bottom:5px; display:flex; justify-content:space-between; align-items:center; }
+.comment-name{ font-weight:bold; color:var(--gold); display:block; }
+.comment-stars{ color:var(--yellow-warning); display:block; margin:2px 0; }
+.comment-text{ display:block; color:#ccc; margin-top:2px; }
+.close-modal{ float:right; cursor:pointer; font-size:1.2em; color:#fff; }
+</style>
+</head>
+
+<body>
+
+<div class="header-controls">
+    <a href="main_services.html" class="btn-back">🔙 الصفحة الرئيسية</a>
+</div>
+
+<div class="container">
+    <h1>إدارة المساعدين السياحيين</h1>
+
+    <select id="roleSelect" class="role-select">
+        <option value="">-- اختر الدور لعرض المساعدين --</option>
+        <option value="GUIDE">مرشدين</option>
+        <option value="COMPANION">مرافقين</option>
+        <option value="DRIVER">سائقين</option>
+    </select>
+
+    <div id="assistantCardsGrid" class="cards-grid"></div>
+</div>
+
+<div id="commentsModal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeCommentsModal()">✖</span>
+        <div id="modalCommentsList"></div>
+    </div>
+</div>
+
+<script>
+const KEYS = window.KEYS;
+const ROLES = window.ROLES;
+
+function loadAppData(){ return window.loadData(); }
+function saveKey(key, value){ return window.saveDataToStorage(key, value); }
+
+const roleSelect = document.getElementById('roleSelect');
+const modal = document.getElementById('commentsModal');
+const modalCommentsList = document.getElementById('modalCommentsList');
+
+roleSelect.addEventListener('change', () => { renderAssistants(roleSelect.value); });
+
+function getMajorityRating(comments){
+    if(!comments || comments.length===0) return 5;
+    const counts = {};
+    comments.forEach(c => counts[c.rating] = (counts[c.rating]||0) + 1);
+    let max = 0, major = 5;
+    for(const r in counts){ if(counts[r] > max){ max = counts[r]; major = parseInt(r); } }
+    return major;
+}
+
+function renderAssistants(roleKey){
+    const grid = document.getElementById('assistantCardsGrid');
+    grid.innerHTML = '';
+    if(!roleKey) return;
+
+    const data = loadAppData();
+    const keyMap = {
+        "GUIDE": KEYS.ASSISTANTS_GUIDES,
+        "COMPANION": KEYS.ASSISTANTS_COMPANIONS,
+        "DRIVER": KEYS.ASSISTANTS_DRIVERS
+    };
+    const dataKey = keyMap[roleKey];
+    const assistants = data[dataKey] || [];
+
+    if(assistants.length === 0){
+        grid.innerHTML = '<p style="text-align:center;color:#aaa;">لا يوجد مساعدون لهذا الدور.</p>';
+        return;
+    }
+
+    assistants.forEach(a=>{
+        const comments = (data[KEYS.COMMENTS] && data[KEYS.COMMENTS].assistants && data[KEYS.COMMENTS].assistants[a.chatCode]) ? data[KEYS.COMMENTS].assistants[a.chatCode] : [];
+        const majorityRating = getMajorityRating(comments);
+        const stars = '⭐'.repeat(majorityRating) + '☆'.repeat(5-majorityRating);
+
+        let details = '';
+        if(a.groupLimit){
+            details += `<p><strong>التخصص:</strong> ${a.guideType}</p>`;
+            details += `<p><strong>حد المجموعة:</strong> ${a.groupLimit} شخص</p>`;
+            details += `<p><strong>سعر اليوم:</strong> ${a.price} درهم</p>`;
+        } else if(a.specialization){
+            details += `<p><strong>التخصص:</strong> ${a.specialization}</p>`;
+            details += `<p><strong>سعر اليوم:</strong> ${a.priceDay} درهم</p>`;
+            details += `<p><strong>سعر الساعة:</strong> ${a.priceHour} درهم</p>`;
+        } else if(a.cityPrice){
+            details += `<p><strong>أجرة المدينة:</strong> ${a.cityPrice} درهم</p>`;
+            details += `<p><strong>أجرة خارج المدينة:</strong> ${a.outCityPrice} درهم</p>`;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'assistant-card';
+        card.innerHTML = `
+            <div class="card-header">
+                <img src="${a.img || 'images/placeholder_profile.png'}" class="profile-img" alt="${a.name}">
+                <div>
+                    <h3>${a.name}</h3>
+                    <div class="rating">${stars} (${a.experience} سنوات)</div>
+                </div>
+            </div>
+
+            <div class="card-details">${details}
+                <p><strong>نبذة:</strong> ${a.about}</p>
+            </div>
+
+            <button class="btn-delete" onclick="deleteAssistant('${roleKey}','${a.chatCode}')">حذف المساعد</button>
+            <button class="btn-delete" onclick="openCommentsModal('${a.chatCode}')">عرض التعليقات</button>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+function deleteAssistant(roleKey, chatCode){
+    if(!confirm('هل تريد حذف هذا المساعد؟')) return;
+
+    const data = loadAppData();
+    const keyMap = {
+        "GUIDE": KEYS.ASSISTANTS_GUIDES,
+        "COMPANION": KEYS.ASSISTANTS_COMPANIONS,
+        "DRIVER": KEYS.ASSISTANTS_DRIVERS
+    };
+    const dataKey = keyMap[roleKey];
+    const list = data[dataKey] || [];
+    const idx = list.findIndex(a => a.chatCode === chatCode);
+
+    if(idx !== -1){
+        list.splice(idx, 1);
+        window.saveDataToStorage(dataKey, list);
+    }
+
+    const chats = data[KEYS.CHATS] || {};
+    if(chats[chatCode]){
+        delete chats[chatCode];
+        window.saveDataToStorage(KEYS.CHATS, chats);
+    }
+
+    const commentsStore = data[KEYS.COMMENTS] || {};
+    if(commentsStore.assistants && commentsStore.assistants[chatCode]){
+        delete commentsStore.assistants[chatCode];
+        window.saveDataToStorage(KEYS.COMMENTS, commentsStore);
+    }
+
+    renderAssistants(roleKey);
+}
+
+function openCommentsModal(chatCode){
+    modalCommentsList.innerHTML = '';
+
+    const data = loadAppData();
+    const comments = (data[KEYS.COMMENTS] && data[KEYS.COMMENTS].assistants && data[KEYS.COMMENTS].assistants[chatCode]) ? data[KEYS.COMMENTS].assistants[chatCode] : [];
+
+    if(comments.length === 0){
+        modalCommentsList.innerHTML = '<p style="color:#aaa; text-align:center;">لا يوجد تعليقات حتى الآن.</p>';
+    } else {
+        comments.forEach((c, i) => {
+            const div = document.createElement('div');
+            div.className = 'comment-item';
+
+            div.innerHTML = `
+                <span>
+                    <span class="comment-name">${c.name}</span>
+                    <span class="comment-stars">${'⭐'.repeat(c.rating)}</span>
+                    <span class="comment-text">${c.text}</span>
+                </span>
+            `;
+
+            const delBtn = document.createElement('button');
+            delBtn.textContent = "🗑️";
+            delBtn.style.background = "var(--red-emergency)";
+            delBtn.style.border = "none";
+            delBtn.style.color = "#fff";
+            delBtn.style.padding = "6px 10px";
+            delBtn.style.borderRadius = "6px";
+            delBtn.style.cursor = "pointer";
+
+            delBtn.onclick = () => {
+                if(!confirm('حذف التعليق؟')) return;
+
+                const fresh = loadAppData();
+                const freshCommentsStore = fresh[KEYS.COMMENTS] || {};
+                if(!freshCommentsStore.assistants) freshCommentsStore.assistants = {};
+                const arr = freshCommentsStore.assistants[chatCode] || [];
+                if(i >= 0 && i < arr.length){
+                    arr.splice(i, 1);
+                    freshCommentsStore.assistants[chatCode] = arr;
+                    window.saveDataToStorage(KEYS.COMMENTS, freshCommentsStore);
+                }
+                openCommentsModal(chatCode);
+            };
+
+            div.appendChild(delBtn);
+            modalCommentsList.appendChild(div);
+        });
+    }
+
+    modal.style.display = 'flex';
+}
+
+function closeCommentsModal(){
+    modal.style.display = 'none';
+}
+</script>
+
+</body>
+</html>

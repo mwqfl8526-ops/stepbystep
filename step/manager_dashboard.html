@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم المدير</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="data/data_config.js"></script>
+    <style>
+        .manager-layout {
+            display: flex;
+            min-height: calc(100vh - 80px); /* تقليل ارتفاع لترك مساحة للهيدر والفوتر */
+            margin-top: 20px;
+            gap: 20px;
+        }
+        .sidebar {
+            width: 250px;
+            background-color: var(--card-bg);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            flex-shrink: 0;
+        }
+        .sidebar h2 {
+            border-bottom: 2px solid var(--gold);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            color: var(--gold);
+            font-size: 1.3em;
+        }
+        .sidebar a {
+            display: block;
+            padding: 12px 10px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            text-decoration: none;
+            color: var(--white);
+            background-color: var(--blue-dark);
+            transition: background-color 0.3s, transform 0.2s;
+            font-weight: bold;
+        }
+        .sidebar a:hover {
+            background-color: var(--blue-royal);
+            transform: translateX(-3px);
+        }
+        .sidebar a.red-link {
+            background-color: var(--red-emergency);
+        }
+        .sidebar a.red-link:hover {
+            background-color: #d63031;
+        }
+        .main-content {
+            flex-grow: 1;
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="header-controls">
+        <button onclick="logoutManager()" class="btn-back" style="background-color: var(--red-emergency);">🚪 تسجيل الخروج</button>
+    </div>
+
+    <div class="container manager-layout">
+        
+        <div class="sidebar">
+            <h2>قائمة الإدارة</h2>
+             
+            <a href="assistants_admin.html">📝اداره كروت المساعدين</a>
+
+            <a href="requests_list.html">📝 إدارة طلبات التوظيف</a>
+            
+            <a href="content_manager.html">📝 اداره   الاماكن    </a>
+
+            <a href="ticket_manager.html">🎟️ إدارة أكواد التذاكر</a>
+            
+            <a href="emergency_logs.html" class="red-link">🚨 سجل بلاغات الطوارئ</a>
+            <a href="manager_complaints.html">📧 الشكاوى والاقتراحات</a>
+        </div>
+        
+        <div class="main-content">
+            <h1>مرحباً بك يا مدير النظام!</h1>
+            <p style="color: #ccc;">استخدم القائمة الجانبية للوصول إلى أدوات الإدارة المختلفة.</p>
+            
+            <div style="margin-top: 50px; text-align: center;">
+                 <img src="uploads/manager-icon.png" alt="Manager Icon" style="width: 150px; opacity: 0.5;">
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        function logoutManager() {
+            if (confirm("هل أنت متأكد من تسجيل الخروج من لوحة التحكم؟")) {
+                 // في بيئة حقيقية، سيتم تدمير جلسة المدير.
+                 window.location.href = 'index.html'; 
+            }
+        }
+    </script>
+</body>
+</html>

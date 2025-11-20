@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>استكمال بيانات الملف الشخصي</title>
+<link rel="stylesheet" href="style.css">
+<script src="data/data_config.js"></script>
+<style>
+.profile-form-container {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 30px;
+    background-color: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    border:1px solid var(--gold);
+}
+.file-upload-info { color:#ccc; font-size:0.9em; margin-bottom:15px; }
+.file-upload-info strong{color:var(--gold);}
+.profile-img-container {display:flex; justify-content:center; margin-bottom:20px;}
+.profile-img-preview {width:120px;height:120px;border-radius:50%;object-fit:cover;border:3px solid var(--blue-royal);background-color:#333;}
+input,textarea,select{width:100%; padding:12px; border:1px solid var(--blue-royal); border-radius:6px; background-color:#2a2a2a; color:var(--white); font-size:1em; transition:border-color 0.3s,box-shadow 0.3s;}
+input:focus,textarea:focus,select:focus{border-color:var(--gold); box-shadow:0 0 8px rgba(255,193,7,0.5); outline:none;}
+button{cursor:pointer;}
+.btn-login{margin-top:15px; padding:8px 12px; background-color:var(--blue-royal); color:#fff; border:none; border-radius:6px;}
+</style>
+</head>
+<body>
+<div class="header-controls">
+<a href="index.html" class="btn-back">🔙 الصفحة الرئيسية</a>
+</div>
+
+<div class="profile-form-container">
+<h1 id="pageTitle">استكمال البيانات الشخصية</h1>
+<p id="roleInfo" style="color: var(--blue-royal); font-weight: bold;"></p>
+
+<form id="completionForm">
+    <div class="profile-img-container">
+        <img id="imagePreview" class="profile-img-preview" src="images/guide_man.png" alt="صورة شخصية">
+    </div>
+    <div class="form-group">
+        <label for="profilePicture">👤 صورة شخصية:</label>
+        <input type="file" id="profilePicture" accept="image/*" required onchange="previewImage(event)">
+    </div>
+      
+    <div class="form-group">
+        <label for="fullName">الاسم (يملأ تلقائياً):</label>
+        <input type="text" id="fullName" readonly style="background-color:#333;" required>
+    </div>
+      
+    <div class="form-group">
+        <label for="age">العمر:</label>
+        <input type="number" id="age" required>
+    </div>
+
+    <div class="form-group">
+        <label for="experience">سنوات الخبرة:</label>
+        <input type="number" id="experience" required>
+    </div>
+      
+    <div id="roleSpecificFields"></div>
+      
+    <div class="form-group">
+        <label for="about">نبذة مختصرة عنك (ستظهر للسائح):</label>
+        <textarea id="about" rows="4" required></textarea>
+    </div>
+
+    <button type="submit" class="btn-submit" style="width:100%; margin-top:30px;">✅ إرسال البيانات</button>
+      
+    <div id="message-box" style="padding:15px; margin-top:20px; text-align:center; display:none;"></div>
+</form>
+</div>
+
+<script>
+const loadData = window.loadData;
+const saveNewAssistant = window.saveNewAssistant;
+const saveDataToStorage = window.saveDataToStorage;
+const ROLES = window.ROLES;
+const KEYS = window.KEYS;
+
+const urlParams = new URLSearchParams(window.location.search);
+const roleKey = urlParams.get('role');
+const appId = urlParams.get('appId');
+
+document.addEventListener('DOMContentLoaded', () => {
+    if(!roleKey || !appId){
+        const msgBox = document.getElementById('message-box');
+        msgBox.innerHTML='❌ خطأ: لم يتم تحديد الدور أو رقم الطلب.';
+        msgBox.style.backgroundColor='var(--red-emergency)';
+        msgBox.style.display='block';
+        document.getElementById('completionForm').style.display='none';
+        return;
+    }
+
+    const data = loadData();
+    const applications = data[KEYS.JOB_APPLICATIONS] || [];
+    window.currentApp = applications.find(app => app.id === appId);
+    const appName = currentApp ? currentApp.fullName : '';
+    document.getElementById('fullName').value = appName || 'غير معروف';
+
+    document.getElementById('pageTitle').textContent = `استكمال بيانات: ${ROLES[roleKey].name}`;
+    document.getElementById('roleInfo').textContent = `رقم الطلب: ${appId}`;
+    renderRoleFields(roleKey);
+});
+
+function previewImage(event){
+    const reader = new FileReader();
+    reader.onload=function(){document.getElementById('imagePreview').src=reader.result;}
+    reader.readAsDataURL(event.target.files[0]);
+}
+
+function renderRoleFields(roleKey){
+    const container=document.getElementById('roleSpecificFields');
+    let fieldsHTML='';
+    switch(roleKey){
+        case ROLES.GUIDE.key:
+            fieldsHTML=`<div class="form-group"><label for="guideType">نوع الإرشاد:</label>
+            <select id="guideType" required>
+            <option value="">-- اختر نوع الإرشاد --</option>
+            <option value="ثقافي">ثقافي</option>
+            <option value="ترفيهي">ترفيهي</option>
+            <option value="ديني">ديني</option>
+            <option value="تجاري">تجاري</option>
+            <option value="اخرى">أخرى</option>
+            </select></div>
+            <div class="form-group"><label for="groupLimit">عدد المجموعة الأقصى:</label>
+            <input type="number" id="groupLimit"></div>
+            <div class="form-group"><label for="price">سعر اليوم:</label>
+            <input type="number" id="price"></div>`;
+            break;
+        case ROLES.COMPANION.key:
+            fieldsHTML=`<div class="form-group"><label for="specialization">التخصص:</label>
+            <select id="specialization" required>
+            <option value="">-- اختر التخصص --</option>
+            <option value="سمعي">سمعي</option>
+            <option value="بصري">بصري</option>
+            <option value="حركي">حركي</option>
+            <option value="كبار سن">كبار سن</option>
+            <option value="متعدد">متعدد</option>
+            </select></div>
+            <div class="form-group"><label for="priceDay">سعر اليوم:</label>
+            <input type="number" id="priceDay"></div>
+            <div class="form-group"><label for="priceHour">سعر الساعة:</label>
+            <input type="number" id="priceHour"></div>`;
+            break;
+        case ROLES.DRIVER.key:
+            fieldsHTML=`<div class="form-group"><label for="cityPrice">أجرة المدينة:</label>
+            <input type="number" id="cityPrice"></div>
+            <div class="form-group"><label for="outCityPrice">أجرة خارج المدينة:</label>
+            <input type="number" id="outCityPrice"></div>`;
+            break;
+    }
+    container.innerHTML=fieldsHTML;
+}
+
+document.getElementById('completionForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    submitButton.disabled=true;
+
+    const msgBox = document.getElementById('message-box');
+    msgBox.textContent='⏳ جاري معالجة البيانات...';
+    msgBox.style.backgroundColor='var(--blue-royal)';
+    msgBox.style.display='block';
+
+    const imgDataURL = document.getElementById('imagePreview').src;
+
+    let assistantData={
+        appId: appId,
+        name: document.getElementById('fullName').value.trim(),
+        age: parseInt(document.getElementById('age').value),
+        experience: parseInt(document.getElementById('experience').value),
+        about: document.getElementById('about').value.trim(),
+        img: imgDataURL
+    };
+
+    switch(roleKey){
+        case ROLES.GUIDE.key:
+            assistantData.guideType=document.getElementById('guideType').value;
+            assistantData.groupLimit=parseInt(document.getElementById('groupLimit').value) || 0;
+            assistantData.price=parseInt(document.getElementById('price').value) || 0;
+            break;
+        case ROLES.COMPANION.key:
+            assistantData.specialization=document.getElementById('specialization').value;
+            assistantData.priceDay=parseInt(document.getElementById('priceDay').value) || 0;
+            assistantData.priceHour=parseInt(document.getElementById('priceHour').value) || 0;
+            break;
+        case ROLES.DRIVER.key:
+            assistantData.cityPrice=parseInt(document.getElementById('cityPrice').value) || 0;
+            assistantData.outCityPrice=parseInt(document.getElementById('outCityPrice').value) || 0;
+            break;
+    }
+
+    // تحقق قبل الحفظ لتجنب التكرار
+    const keyMap = {
+        [ROLES.GUIDE.key]: KEYS.ASSISTANTS_GUIDES,
+        [ROLES.COMPANION.key]: KEYS.ASSISTANTS_COMPANIONS,
+        [ROLES.DRIVER.key]: KEYS.ASSISTANTS_DRIVERS
+    };
+    const dataKey = keyMap[roleKey];
+    const data = loadData();
+    const list = data[dataKey] || [];
+
+    if(!list.some(a => a.appId === appId)){
+        const newChatCode = saveNewAssistant(roleKey, assistantData);
+
+        // تحديث حالة الطلب لمكتمل مرة واحدة
+        if(window.currentApp){
+            window.currentApp.isCompleted = true;
+            const apps = data[KEYS.JOB_APPLICATIONS] || [];
+            const index = apps.findIndex(app => app.id === appId);
+            if(index !== -1){
+                apps[index].status = 'تم الاكتمال';
+                saveDataToStorage(KEYS.JOB_APPLICATIONS, apps);
+            }
+        }
+
+        msgBox.innerHTML=`
+✅ تم استكمال البيانات بنجاح.
+<br><strong>كود الشات الخاص بك: <span style="color: var(--gold);">${newChatCode}</span></strong>
+<br>⚠️ يرجى الاحتفاظ بهذا الكود للدخول للشات الخاص بك.
+<br><button class="btn-login" onclick="goToAssistantLogin()">اذهب لتسجيل الدخول كمساعد</button>
+<br><button class="btn-login" onclick="showNewAssistant()">مشاهدة المساعد الجديد</button>
+`;
+        msgBox.style.backgroundColor='var(--green-success)';
+    } else {
+        msgBox.innerHTML=`⚠️ هذا المساعد تم حفظه مسبقاً.`;
+        msgBox.style.backgroundColor='orange';
+    }
+
+    submitButton.disabled=false;
+});
+
+function goToAssistantLogin(){
+    window.location.href='assistant_login.html';
+}
+
+function showNewAssistant(){
+    const keyMap = {
+        [ROLES.GUIDE.key]: KEYS.ASSISTANTS_GUIDES,
+        [ROLES.COMPANION.key]: KEYS.ASSISTANTS_COMPANIONS,
+        [ROLES.DRIVER.key]: KEYS.ASSISTANTS_DRIVERS
+    };
+    const dataKey = keyMap[roleKey];
+    const data = loadData();
+    const newAssistant = data[dataKey][data[dataKey].length - 1];
+    window.location.href = `assistants_cards.html?role=${roleKey}&new=${newAssistant.chatCode}`;
+}
+</script>
+</body>
+</html>

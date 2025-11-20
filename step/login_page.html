@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تسجيل الدخول - استقبال الطلبات</title>
+<link rel="stylesheet" href="style.css">
+<style>
+body { font-family: Arial, sans-serif; background-color: #121212; color: #e0e0e0; margin:0; padding:0; display: flex; justify-content: center; align-items: center; min-height: 100vh;}
+.container { max-width: 400px; width: 100%; margin: 30px auto; background-color: #1e1e1e; padding: 25px; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 0, 0, 0.5); }
+h2 { text-align:center; margin-bottom:20px; color: #25d366; }
+label { display: block; margin-bottom: 5px; color: #e0e0e0; font-weight: bold; }
+input { width:100%; padding:12px; border-radius:5px; border:1px solid #555; background-color:#2c2c2c; color:#e0e0e0; margin-bottom:15px; box-sizing: border-box; }
+button { width: 100%; padding:12px 15px; border:none; border-radius:5px; cursor:pointer; background-color:#25d366; color:#fff; font-weight:bold; margin-top:10px; font-size: 16px; transition: background-color 0.3s;}
+button:hover { background-color: #1eaf53; }
+.error { color:#ff4d4d; font-weight:bold; text-align: center; margin-top: 15px;}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>تسجيل دخول المشرف</h2>
+
+<div id="loginDiv">
+    <label for="placeCode">كود المكان:</label>
+    <input type="text" id="placeCode" placeholder="أدخل كود المكان">
+    
+    <label for="placePassword">كلمة السر:</label>
+    <input type="password" id="placePassword" placeholder="أدخل كلمة السر">
+    
+    <button id="loginBtn">تحميل الطلبات</button>
+    <div class="error" id="loginError" style="display:none;"></div>
+</div>
+
+<script src="data_config.js"></script>
+<script>
+const loginBtn = document.getElementById('loginBtn');
+const loginError = document.getElementById('loginError');
+
+loginBtn.addEventListener('click', () => {
+    const code = document.getElementById('placeCode').value.trim();
+    const password = document.getElementById('placePassword').value.trim();
+
+    if(!code || !password) {
+        loginError.style.display='block'; 
+        loginError.textContent='يرجى إدخال الكود وكلمة السر'; 
+        return;
+    }
+
+    const data = loadData();
+    let found = false;
+    const keys = [KEYS.HOTELS, KEYS.RESTAURANTS, KEYS.STORES];
+
+    // التحقق من وجود الكود وكلمة المرور
+    for(const key of keys){
+        const places = data[key] || [];
+        const place = places.find(p => p.code===code && p.password===password);
+        if(place){ found = true; break; }
+    }
+
+    if(!found){
+        loginError.style.display='block';
+        loginError.textContent='الكود أو كلمة السر غير صحيحة';
+        return;
+    }
+    
+    // إذا كان التحقق صحيحًا، قم بالتحويل إلى صفحة الطلبات مع إرسال البيانات عبر URL
+    const encodedCode = encodeURIComponent(code);
+    const encodedPassword = encodeURIComponent(password);
+    
+    // التوجيه إلى صفحة الطلبات
+    window.location.href = `orders_page.html?code=${encodedCode}&pass=${encodedPassword}`;
+});
+</script>
+</div>
+</body>
+</html>

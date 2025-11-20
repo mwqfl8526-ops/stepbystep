@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>إدارة الأماكن</title>
+<link rel="stylesheet" href="style.css">
+<style>
+body { font-family: Arial, sans-serif; background:#121212; color:#e0e0e0; margin:0; padding:20px; }
+h2 { text-align:center; margin-bottom:20px; }
+#typeSelect { margin-bottom:20px; padding:8px; border-radius:5px; background:#2c2c2c; color:#e0e0e0; border:1px solid #555; }
+.container { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:20px; }
+.card { background:#1e1e1e; border-radius:10px; padding:15px; display:flex; flex-direction:column; }
+.card img { width:100%; height:150px; object-fit:cover; margin-bottom:10px; }
+.card button { margin-top:5px; padding:5px; border:none; border-radius:5px; cursor:pointer; color:#fff; font-weight:bold; }
+.deleteBtn { background:#ff4d4d; }
+.viewComments { background:#ff9800; }
+</style>
+</head>
+<body>
+<h2>إدارة الأماكن</h2>
+<select id="typeSelect">
+<option value="HOTELS">فنادق</option>
+<option value="RESTAURANTS">مطاعم</option>
+<option value="STORES">محلات</option>
+</select>
+<div class="container" id="cardsContainer"></div>
+
+<!-- مودل التعليقات -->
+<div class="modal" id="commentsModal">
+<div class="modal-content">
+<span class="close" id="commentsClose">&times;</span>
+<h3>التعليقات</h3>
+<div id="commentsList"></div>
+</div>
+</div>
+
+<script src="data_config.js"></script>
+<script>
+const typeSelect = document.getElementById('typeSelect');
+const cardsContainer = document.getElementById('cardsContainer');
+const commentsModal = document.getElementById('commentsModal');
+const commentsClose = document.getElementById('commentsClose');
+const commentsList = document.getElementById('commentsList');
+
+let currentType = typeSelect.value;
+
+function loadPlaces(type){ return window.loadData()[window.KEYS[type]] || []; }
+
+function renderCards(){
+    cardsContainer.innerHTML='';
+    const places = loadPlaces(currentType);
+    places.forEach(place=>{
+        const card = document.createElement('div');
+        card.className='card';
+        card.innerHTML=`
+        <img src="${place.photoBase64}" alt="${place.name}">
+        <h3>${place.name}</h3>
+        <p>كود: ${place.code} | باسورد: ${place.password}</p>
+        <button class="viewComments">عرض التعليقات</button>
+        <button class="deleteBtn">حذف المكان</button>
+        `;
+        const viewBtn = card.querySelector('.viewComments');
+        const deleteBtn = card.querySelector('.deleteBtn');
+
+        viewBtn.addEventListener('click', ()=>{
+            commentsModal.style.display='flex';
+            renderComments(place.code);
+        });
+
+        deleteBtn.addEventListener('click', ()=>{
+            if(confirm('هل تريد حذف هذا المكان؟')){
+                const data = window.loadData();
+                data[window.KEYS[currentType]] = data[window.KEYS[currentType]].filter(p=>p.code!==place.code);
+                window.saveDataToStorage(window.KEYS[currentType], data[window.KEYS[currentType]]);
+                renderCards();
+            }
+        });
+
+        cardsContainer.appendChild(card);
+    });
+}
+
+function renderComments(code){
+    commentsList.innerHTML='';
+    const comments=window.getComments(code);
+    if(comments.length===0){ commentsList.innerHTML='<p>لا توجد تعليقات بعد.</p>'; return; }
+    comments.forEach(c=>{
+        const div=document.createElement('div');
+        div.innerHTML=`<p><strong>${c.name}</strong> (${c.time})</p><p>${c.comment}</p>`;
+        commentsList.appendChild(div);
+    });
+}
+
+commentsClose.addEventListener('click', ()=>{ commentsModal.style.display='none'; });
+typeSelect.addEventListener('change', ()=>{
+    currentType = typeSelect.value;
+    renderCards();
+});
+
+renderCards();
+</script>
+</body>
+</html>

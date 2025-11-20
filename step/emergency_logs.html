@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سجل الطوارئ</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="data/data_config.js"></script>
+</head>
+<body>
+    <div class="header-controls">
+        <a href="manager_dashboard.html" class="btn-back">🔙 لوحة المدير</a>
+    </div>
+
+    <div class="container">
+        <h1>سجل بلاغات الطوارئ 🚨</h1>
+        <p>هنا يتم عرض بلاغات الطوارئ المرسلة من السياح مع الموقع الجغرافي.</p>
+        
+        <button onclick="displayEmergencyLogs()" class="btn-primary" style="margin-top: 15px;">🔄 تحديث السجل</button>
+        <button onclick="confirmDeleteAllLogs()" class="btn-back" style="background-color: var(--red-emergency);">🗑️ حذف جميع السجلات</button>
+
+        <div id="logsList" class="requests-table-container">
+            <table class="requests-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>وقت البلاغ</th>
+                        <th>الموقع</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="emergencyTableBody">
+                    </tbody>
+            </table>
+        </div>
+        
+        <p id="noLogsMessage" style="text-align: center; color: var(--gold); margin-top: 50px; display: none;">لا توجد بلاغات طوارئ جديدة.</p>
+
+    </div>
+
+    <script>
+        const loadData = window.loadData;
+        const deleteEmergency = window.deleteEmergency;
+        const saveDataToStorage = window.saveDataToStorage;
+        const KEYS = window.KEYS;
+
+        function displayEmergencyLogs() {
+            const data = loadData();
+            const logs = data[KEYS.EMERGENCIES] || [];
+            const tbody = document.getElementById('emergencyTableBody');
+            const noLogsMessage = document.getElementById('noLogsMessage');
+            tbody.innerHTML = '';
+
+            if (logs.length === 0) {
+                noLogsMessage.style.display = 'block';
+                return;
+            }
+            noLogsMessage.style.display = 'none';
+
+            logs.forEach(log => {
+                const tr = document.createElement('tr');
+                
+                let locationCell;
+                if (log.location && log.location.gMapsURL) {
+                     locationCell = `<a href="${log.location.gMapsURL}" target="_blank" class="btn-primary" style="background-color: var(--red-emergency);">🔴 عرض الموقع الحي</a>
+                                     <br><small>(${log.location.lat}, ${log.location.lng})</small>`;
+                } else {
+                     locationCell = log.location || "تعذر إرسال الموقع";
+                }
+
+                tr.innerHTML = `
+                    <td>${log.id}</td>
+                    <td>${log.time}</td>
+                    <td>${locationCell}</td>
+                    <td><button onclick="removeLog('${log.id}')" class="btn-back" style="background-color: #8c1a1a;">🗑️ حذف البلاغ</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
+        function removeLog(id) {
+            if (confirm(`هل أنت متأكد من حذف بلاغ الطوارئ رقم ${id}؟`)) {
+                if (deleteEmergency(id)) {
+                    alert('✅ تم حذف البلاغ بنجاح.');
+                    displayEmergencyLogs();
+                } else {
+                    alert('❌ فشل حذف البلاغ.');
+                }
+            }
+        }
+        
+        function confirmDeleteAllLogs() {
+             if (confirm("هل أنت متأكد من حذف جميع سجلات الطوارئ؟ هذا الإجراء لا يمكن التراجع عنه.")) {
+                 saveDataToStorage(KEYS.EMERGENCIES, []);
+                 displayEmergencyLogs();
+                 alert("✅ تم حذف جميع سجلات الطوارئ بنجاح.");
+             }
+        }
+
+        document.addEventListener('DOMContentLoaded', displayEmergencyLogs);
+    </script>
+</body>
+</html>

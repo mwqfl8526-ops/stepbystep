@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة السياحة الرقمية</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="data/data_config.js"></script>
+    <style>
+        .login-box {
+            max-width: 450px;
+            margin: 100px auto;
+            text-align: center;
+        }
+        .logo {
+            font-size: 2.5em;
+            color: var(--gold);
+            margin-bottom: 30px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-box container">
+        <div class="logo">منصة السياحة الرقمية 🇦🇪</div>
+        
+        <p style="margin-bottom: 20px;">الرجاء إدخال كود تذكرتك للدخول إلى خدمات السائح.</p>
+        
+        <div class="form-group">
+            <input type="text" id="ticketCode" placeholder="أدخل كود التذكرة" required>
+        </div>
+        
+        <button onclick="loginTourist()" class="btn-primary" style="width: 100%; margin-bottom: 20px;">دخول ➡️</button>
+        
+        <div id="message-box" style="padding: 10px; display: none;"></div>
+
+        <hr style="border-color: var(--border-color); margin: 30px 0;">
+        
+        <a href="job_application.html" class="btn-back">انضم كمساعد سياحي 🤝</a>
+    </div>
+
+    <script>
+        const loadData = window.loadData;
+        const saveDataToStorage = window.saveDataToStorage;
+        const KEYS = window.KEYS;
+
+        function loginTourist() {
+            const code = document.getElementById('ticketCode').value.trim();
+            const msgBox = document.getElementById('message-box');
+            msgBox.style.display = 'none';
+            msgBox.style.backgroundColor = 'var(--red-emergency)';
+            
+            if (!code) {
+                msgBox.textContent = "يرجى إدخال كود التذكرة.";
+                msgBox.style.display = 'block';
+                return;
+            }
+
+            const data = loadData();
+            const validCodes = data[KEYS.TICKET_CODES] || [];
+            
+            const validTicket = validCodes.find(t => t.code === code && new Date(t.expiryDate) > new Date());
+            
+            if (validTicket) {
+                sessionStorage.setItem('currentTicket', code);
+                window.location.href = 'main_services.html';
+            } else {
+                msgBox.textContent = "كود التذكرة غير صحيح أو منتهي الصلاحية.";
+                msgBox.style.display = 'block';
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const data = loadData();
+            if (!(data[KEYS.TICKET_CODES] || []).length) {
+                 saveDataToStorage(KEYS.TICKET_CODES, [{ code: '12345', expiryDate: '2030-01-01' }]);
+                 console.log("تم إضافة كود تذكرة افتراضي (12345).");
+            }
+        });
+    </script>
+</body>
+</html>

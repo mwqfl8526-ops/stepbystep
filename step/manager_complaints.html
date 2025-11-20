@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الشكاوى والاقتراحات الواردة</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="data/data_config.js"></script>
+    <style>
+        /* إضافة ستايلات خاصة بالجدول إذا لم تكن موجودة في style.css */
+        .requests-table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+        .requests-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .requests-table th, .requests-table td {
+            border: 1px solid #444;
+            padding: 12px 10px;
+            text-align: right;
+        }
+        .requests-table th {
+            background-color: var(--blue-royal);
+            color: var(--white);
+            font-weight: bold;
+        }
+        .requests-table tr:nth-child(even) {
+            background-color: #2a2a2a;
+        }
+        .requests-table tr:hover {
+            background-color: #333;
+        }
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: var(--dark-bg);
+        }
+    </style>
+</head>
+<body>
+    <div class="header-controls">
+        <a href="manager_dashboard.html" class="btn-back">🔙 لوحة المدير</a>
+    </div>
+
+    <div class="container">
+        <h1>الشكاوى والاقتراحات الواردة 📧</h1>
+        <p>هنا يتم عرض جميع الرسائل الواردة من نموذج الشكاوى والاقتراحات.</p>
+        
+        <button onclick="displayComplaints()" class="btn-primary" style="margin-top: 15px;">🔄 تحديث القائمة</button>
+
+        <div id="complaintsList" class="requests-table-container">
+            <table class="requests-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>وقت الإرسال</th>
+                        <th>النوع</th>
+                        <th>الاسم</th> 
+                        <th>الهاتف</th> 
+                        <th>تفاصيل الرسالة</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="complaintsTableBody">
+                    </tbody>
+            </table>
+        </div>
+        
+        <p id="noComplaintsMessage" style="text-align: center; color: var(--gold); margin-top: 50px; display: none;">لا توجد شكاوى أو اقتراحات جديدة.</p>
+    </div>
+
+    <script>
+        // نحتاج لتعريف هذه الدالة في data_config.js أو تعريفها هنا
+        function deleteComplaint(idToDelete) {
+            const data = loadData();
+            let complaints = data[KEYS.COMPLAINTS] || [];
+            
+            const initialLength = complaints.length;
+            
+            // فلترة القائمة لإزالة الشكوى المطابقة للـ ID
+            complaints = complaints.filter(c => c.id !== idToDelete);
+            
+            if (complaints.length < initialLength) {
+                window.saveDataToStorage(KEYS.COMPLAINTS, complaints);
+                return true;
+            }
+            return false;
+        }
+
+        const loadData = window.loadData;
+        const KEYS = window.KEYS;
+
+        function displayComplaints() {
+            const data = loadData();
+            const complaints = data[KEYS.COMPLAINTS] || [];
+            const tbody = document.getElementById('complaintsTableBody');
+            const noComplaintsMessage = document.getElementById('noComplaintsMessage');
+            tbody.innerHTML = '';
+
+            if (complaints.length === 0) {
+                noComplaintsMessage.style.display = 'block';
+                return;
+            }
+            noComplaintsMessage.style.display = 'none';
+
+            complaints.forEach(c => {
+                const tr = document.createElement('tr');
+                const badgeColor = c.type === 'شكوى' ? 'var(--red-emergency)' : 'var(--blue-royal)';
+                
+                tr.innerHTML = `
+                    <td>${c.id}</td>
+                    <td>${c.time}</td>
+                    <td><span class="status-badge" style="background-color: ${badgeColor}; color: var(--white);">${c.type}</span></td>
+                    <td>${c.name || 'غير محدد'}</td> <td>${c.phone || 'غير محدد'}</td> <td>${c.message.length > 50 ? c.message.substring(0, 50) + '...' : c.message}</td>
+                    <td><button onclick="viewAndRemove('${c.id}', '${c.message.replace(/'/g, "\\'")}', '${c.name.replace(/'/g, "\\'")}', '${c.phone.replace(/'/g, "\\'")}')" class="btn-back" style="background-color: var(--red-emergency); border: none;">عرض/حذف</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
+        function viewAndRemove(id, message, name, phone) {
+            const fullMessage = message.replace(/\\'/g, "'");
+            const confirmationText = `رسالة (${id}) - النوع: ${name}\nالاسم: ${name}\nالهاتف: ${phone}\n\nالتفاصيل:\n${fullMessage}\n\nهل تريد حذف هذه الرسالة بعد قراءتها؟`;
+            
+            if (confirm(confirmationText)) {
+                if (deleteComplaint(id)) {
+                    alert('✅ تم حذف الرسالة بنجاح.');
+                    displayComplaints();
+                } else {
+                    alert('❌ فشل حذف الرسالة. (قد لا يكون الكود موجودًا).');
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', displayComplaints);
+    </script>
+</body>
+</html>

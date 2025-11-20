@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الشات</title>
+<style>
+body { margin:0; font-family:Arial,sans-serif; background-color:#121212; color:#e0e0e0; }
+header {   
+    background-color: rgba(0,0,0,0); 
+    padding:12px;   
+    text-align:center;   
+    font-weight:bold;   
+    color:#fff;   
+    position:sticky;   
+    top:0;   
+    z-index:10;  
+}
+#chatContainer { display:flex; flex-direction:column; height:calc(100vh - 60px); }
+#messages { flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:8px; }
+.message { max-width:70%; padding:8px 12px; border-radius:12px; word-wrap:break-word; }
+.message .senderName { font-size:0.75em; font-weight:bold; margin-bottom:2px; }
+.message.sender { align-self:flex-end; background-color:#25d366; color:#fff; }
+.message.receiver { align-self:flex-start; background-color:#333; color:#fff; }
+#inputContainer { display:flex; gap:6px; padding:8px; background-color:#1f1f1f; }
+#messageInput { flex:1; padding:10px; border-radius:20px; border:none; background-color:#2a2a2a; color:#fff; outline:none; }
+#sendBtn, #imageBtn, #locationBtn { padding:0 12px; border:none; border-radius:50%; background-color:#075e54; color:#fff; cursor:pointer; font-size:16px; }
+#sendBtn:hover, #imageBtn:hover, #locationBtn:hover { background-color:#128c7e; }
+#clearBtn { position:absolute; right:12px; top:12px; padding:6px 12px; border:none; border-radius:6px; background-color:#ff3b3b; color:#fff; cursor:pointer; font-size:14px; z-index:20; }
+#namePromptOverlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; flex-direction:column; color:#fff; }
+#namePromptOverlay input { padding:10px; border-radius:6px; border:none; width:250px; margin-bottom:10px; }
+#namePromptOverlay button { padding:8px 16px; border:none; border-radius:6px; background-color:#25d366; color:#fff; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<header id="chatHeader">الشات</header>
+
+<div id="chatContainer">
+    <div id="messages"></div>
+    <div id="inputContainer">
+        <input type="text" id="messageInput" placeholder="اكتب رسالة...">
+        <button id="sendBtn">✉️</button>
+        <button id="imageBtn">🖼️</button>
+        <button id="locationBtn">📍</button>
+    </div>
+</div>
+
+<div id="namePromptOverlay" style="display:none;">
+    <h2>أدخل اسمك للبدء بالشات</h2>
+    <input type="text" id="guestNameInput" placeholder="اسمك">
+    <button id="guestNameSubmit">دخول الشات</button>
+</div>
+
+<script>
+const urlParams = new URLSearchParams(window.location.search);
+const chatCode = urlParams.get('code');
+let userName = urlParams.get('name') || '';
+const showClear = urlParams.get('showClear') === '1';
+
+const messagesEl = document.getElementById('messages');
+const messageInput = document.getElementById('messageInput');
+const nameOverlay = document.getElementById('namePromptOverlay');
+
+if(!chatCode){
+    alert('❌ لم يتم تحديد كود الشات.');
+    window.location.href = 'index.html';
+}
+
+function loadMessages(){
+    const chats = JSON.parse(localStorage.getItem('CHATS') || '{}');
+    return chats[chatCode] || [];
+}
+
+function saveMessages(msgs){
+    const chats = JSON.parse(localStorage.getItem('CHATS') || '{}');
+    chats[chatCode] = msgs;
+    localStorage.setItem('CHATS', JSON.stringify(chats));
+}
+
+function renderMessages(){
+    messagesEl.innerHTML = '';
+    const msgs = loadMessages();
+    msgs.forEach(msg=>{
+        const div = document.createElement('div');
+        div.classList.add('message');
+        div.classList.add(msg.sender === userName ? 'sender' : 'receiver');
+        const nameDiv = document.createElement('div');
+        nameDiv.classList.add('senderName');
+        nameDiv.textContent = msg.sender;
+        div.appendChild(nameDiv);
+        if(msg.type === 'text'){
+            const textNode = document.createElement('div');
+            textNode.textContent = msg.text;
+            div.appendChild(textNode);
+        } else if(msg.type === 'image'){
+            const img = document.createElement('img');
+            img.src = msg.text;
+            img.style.maxWidth = '100%';
+            img.style.borderRadius = '8px';
+            div.appendChild(img);
+        } else if(msg.type === 'location'){
+            const link = document.createElement('a');
+            link.href = msg.text;
+            link.target = '_blank';
+            link.textContent = '📍 الموقع';
+            div.appendChild(link);
+        }
+        messagesEl.appendChild(div);
+    });
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function addMessage(type, text){
+    const msgs = loadMessages();
+    msgs.push({sender:userName, type, text});
+    saveMessages(msgs);
+    renderMessages();
+}
+
+// إرسال رسالة نصية
+document.getElementById('sendBtn').addEventListener('click', ()=>{
+    const text = messageInput.value.trim();
+    if(!text) return;
+    addMessage('text', text);
+    messageInput.value='';
+});
+
+// إرسال صورة
+document.getElementById('imageBtn').addEventListener('click', ()=>{
+    const input = document.createElement('input');
+    input.type='file';
+    input.accept='image/*';
+    input.onchange=e=>{
+        const file = e.target.files[0];
+        if(file){
+            const reader = new FileReader();
+            reader.onload=()=>{
+                addMessage('image', reader.result);
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+    input.click();
+});
+
+// مشاركة الموقع
+document.getElementById('locationBtn').addEventListener('click', ()=>{
+    if(navigator.geolocation){
+        navigator.geolocation.getCurrentPosition(pos=>{
+            const url = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+            addMessage('location', url);
+        });
+    } else {
+        alert('❌ المتصفح لا يدعم الموقع.');
+    }
+});
+
+setInterval(renderMessages, 1000);
+
+// إضافة زر مسح الشات إذا موجود showClear=1
+function addClearButton(){
+    if(document.getElementById('clearBtn')) return; // منع تكرار
+    const btn = document.createElement('button');
+    btn.id = 'clearBtn';
+    btn.textContent = '🗑️ مسح الشات';
+    btn.onclick = ()=>{
+        if(confirm('هل تريد مسح كل الرسائل في هذا الشات؟')){
+            saveMessages([]);
+            renderMessages();
+        }
+    };
+    document.body.appendChild(btn);
+    // نضعه داخل header
+    document.getElementById('chatHeader').appendChild(btn);
+}
+
+if(!userName){
+    nameOverlay.style.display='flex';
+    document.getElementById('chatContainer').style.display='none';
+    document.getElementById('chatHeader').textContent = 'شات: ضيف';
+    document.getElementById('guestNameSubmit').addEventListener('click', ()=>{
+        const name = document.getElementById('guestNameInput').value.trim();
+        if(!name) return alert('❌ أدخل اسمك أولاً!');
+        userName = name;
+        nameOverlay.style.display='none';
+        document.getElementById('chatContainer').style.display='flex';
+        document.getElementById('chatHeader').textContent = `شات: ${userName}`;
+        renderMessages();
+    });
+} else {
+    renderMessages();
+    document.getElementById('chatHeader').textContent = `شات: ${userName}`;
+    if(showClear) addClearButton();
+}
+</script>
+
+</body>
+</html>
